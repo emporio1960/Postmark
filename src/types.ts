@@ -19,7 +19,7 @@ export interface Art { kind: ArtKind; palette: string[]; seed: number }
 export type BorderKind = 'none' | 'line' | 'double' | 'dashed' | 'corners' | 'thick';
 export interface Border { kind: BorderKind; color: string; inset: number }
 
-interface BaseEl { id: string; x: number; y: number; w: number }
+interface BaseEl { id: string; x: number; y: number; w: number; /** rotation in degrees around the element's centre */ rotation?: number }
 
 export interface TextEl extends BaseEl {
   type: 'text';
@@ -33,6 +33,12 @@ export interface TextEl extends BaseEl {
   spacing: number; // letter spacing in card units
   lineHeight: number;
   role?: 'title' | 'message' | 'signoff';
+  /** -100..100: bend the text along an arc (positive arches upward) */
+  curve?: number;
+  shadow?: boolean;
+  /** outline width in card units (0 = none) */
+  outline?: number;
+  outlineColor?: string;
 }
 
 export type PhotoFilter = 'none' | 'mono' | 'sepia' | 'warm' | 'cool' | 'vivid' | 'fade';
@@ -49,12 +55,14 @@ export interface ImageEl extends BaseEl {
   filter: PhotoFilter;
   shape: PhotoShape;
   frame: PhotoFrame;
+  /** a hand-drawn signature rather than a photograph */
+  role?: 'signature';
 }
 
 export interface StickerEl extends BaseEl {
   type: 'sticker';
   h: number;
-  kind: string; // vector sticker id, or "emoji:🎂"
+  kind: string; // vector sticker id, "emoji:🎂" or "qr:https://…"
   color: string;
 }
 
@@ -75,6 +83,11 @@ export interface CardDoc {
 
 export type CardStatus = 'draft' | 'completed';
 
+export type EnvelopeStyle = 'match' | 'ivory' | 'kraft' | 'white';
+export interface EnvelopeSpec { name: string; lines: string; style: EnvelopeStyle }
+
+export interface Contact { id: string; name: string; relationship: string; notes: string }
+
 export interface SavedCard extends CardDoc {
   id: string;
   name: string;
@@ -82,6 +95,8 @@ export interface SavedCard extends CardDoc {
   templateId?: string;
   status: CardStatus;
   favourite: boolean;
+  recipient?: string;
+  envelope?: EnvelopeSpec;
   createdAt: number;
   updatedAt: number;
 }
@@ -105,6 +120,10 @@ export interface Settings {
   exportScale: number; // output pixels per card unit
   reduceMotion: boolean;
   notifications: boolean;
+  /** hand-drawn signature as a transparent PNG data URL */
+  signatureImage?: string;
+  /** optional URL of the user's own AI message backend */
+  aiEndpoint?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

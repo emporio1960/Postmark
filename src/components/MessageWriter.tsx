@@ -3,26 +3,34 @@ import { useState } from 'react';
 import { ClipboardCopy, PenLine, RefreshCw, Sparkles } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { OCCASIONS, type OccasionId } from '../data/occasions';
-import { effectiveTone, MESSAGE_CATEGORIES, providers, RELATIONSHIPS, TONES, type MessageLength, type MessageRequest, type Relationship } from '../data/messages';
+import { effectiveTone, isValidEndpoint, MESSAGE_CATEGORIES, providers, RELATIONSHIPS, remoteProvider, TONES, type MessageLength, type MessageRequest, type Relationship } from '../data/messages';
 import { copyText } from '../render/export';
 import { Button, Chip, Segmented, useToast } from './ui';
 
-export function MessageWriter({ occasion, onUse }: { occasion?: OccasionId; onUse?: (message: string) => void }) {
+export function MessageWriter({ occasion, recipient, onUse }: { occasion?: OccasionId; recipient?: string; onUse?: (message: string) => void }) {
   const { settings } = useStore();
   const toast = useToast();
   const [req, setReq] = useState<MessageRequest>({
-    recipient: '', occasion: occasion ?? 'birthday', relationship: 'Friend', tone: 'warm', length: 'medium', details: '', sender: settings.signature,
+    recipient: recipient ?? '', occasion: occasion ?? 'birthday', relationship: 'Friend', tone: 'warm', length: 'medium', details: '', sender: settings.signature,
   });
   const [results, setResults] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const ai = settings.aiEndpoint && isValidEndpoint(settings.aiEndpoint) ? settings.aiEndpoint : '';
   const set = (patch: Partial<MessageRequest>) => setReq((r) => ({ ...r, ...patch }));
   const toneUsed = effectiveTone(req.occasion, req.tone);
 
   const generate = async () => {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setNote('');
     try {
-      const out = await providers[0].generate(req);
+      let out: string[] = [];
+      if (ai) {
+        // Try the user's AI endpoint first; fall back to the built-in writer if it fails.
+        try { out = await remoteProvider(ai).generate(req); }
+        catch (e) { setNote(`${(e as Error).message} Showing built-in suggestions instead.`); }
+      }
+      if (!out.length) out = await providers[0].generate(req);
       if (!out.length) throw new Error('No suggestions were produced. Try a different tone.');
       setResults(out);
     } catch (e) {
@@ -88,6 +96,7 @@ export function MessageWriter({ occasion, onUse }: { occasion?: OccasionId; onUs
         {results.length ? 'Write new suggestions' : 'Write my message'}
       </Button>
       {error && <p role="alert" className="rounded-xl bg-rosewood/10 px-3.5 py-2.5 text-sm text-rosewood">{error}</p>}
+      {note && <p role="status" className="rounded-xl bg-gold-100 px-3.5 py-2.5 text-sm text-gold-800">{note}</p>}
 
       {results.length > 0 && (
         <ul className="space-y-3" aria-label="Message suggestions">
@@ -102,7 +111,7 @@ export function MessageWriter({ occasion, onUse }: { occasion?: OccasionId; onUs
           ))}
         </ul>
       )}
-      <p className="text-[11px] leading-relaxed text-ink-mute">Suggestions are written on your device by the built-in writer — nothing you type is sent anywhere.</p>
+      <p className="text-[11px] leading-relaxed text-ink-mute">{ai ? 'Your brief is sent to the AI endpoint set in Settings. If it can’t be reached, the built-in writer is used instead.' : 'Suggestions are written on your device by the built-in writer — nothing you type is sent anywhere.'}</p>
     </div>
   );
 }

@@ -14,7 +14,7 @@ type Filter = 'all' | 'draft' | 'completed' | 'favourite';
 type Sort = 'edited' | 'created' | 'name';
 
 export function MyCards() {
-  const { ready, cards, deleteCard, persistent } = useStore();
+  const { ready, cards, deleteCard, persistent, saveCard } = useStore();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('edited');
@@ -80,7 +80,7 @@ export function MyCards() {
         </>
       )}
 
-      {preview && <PreviewModal doc={preview} name={preview.name} onClose={() => setPreview(null)} />}
+      {preview && <PreviewModal doc={preview} name={preview.name} recipient={preview.recipient} envelope={preview.envelope} onEnvelopeChange={(envelope) => { saveCard({ ...preview, envelope }).catch(() => undefined); }} onClose={() => setPreview(null)} />}
       <ConfirmDialog open={!!toDelete} title="Delete this card?" confirmLabel="Delete card" onClose={() => setToDelete(null)}
         message={`“${toDelete?.name ?? ''}” will be permanently removed from this device. This cannot be undone.`}
         onConfirm={() => { if (toDelete) { deleteCard(toDelete.id); toast('Card deleted'); } }} />
@@ -89,7 +89,7 @@ export function MyCards() {
 }
 
 export function Favourites() {
-  const { ready, cards, favTemplates } = useStore();
+  const { ready, cards, favTemplates, saveCard } = useStore();
   const [preview, setPreview] = useState<SavedCard | null>(null);
   const templates = favTemplates.map((id) => TEMPLATE_MAP[id]).filter(Boolean);
   const favCards = cards.filter((c) => c.favourite).sort((a, b) => b.updatedAt - a.updatedAt);
@@ -113,7 +113,7 @@ export function Favourites() {
           <div className={GRID}>{favCards.map((c) => <SavedCardTile key={c.id} card={c} onPreview={setPreview} />)}</div>
         </section>
       )}
-      {preview && <PreviewModal doc={preview} name={preview.name} onClose={() => setPreview(null)} />}
+      {preview && <PreviewModal doc={preview} name={preview.name} recipient={preview.recipient} envelope={preview.envelope} onEnvelopeChange={(envelope) => { saveCard({ ...preview, envelope }).catch(() => undefined); }} onClose={() => setPreview(null)} />}
     </div>
   );
 }

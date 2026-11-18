@@ -51,12 +51,12 @@ export const MESSAGE_CATEGORIES: { label: string; preset: Partial<MessageRequest
   { label: 'Friendship', preset: { occasion: 'just-because', tone: 'warm', relationship: 'Friend' } },
 ];
 
-const SOLEMN: OccasionId[] = ['sympathy', 'get-well'];
+const SOLEMN: OccasionId[] = ['sympathy', 'get-well', 'anzac-day'];
 
 /** Sympathy and get-well cards are never written in a jokey voice. */
 export function effectiveTone(occasion: OccasionId, tone: Tone): Tone {
   if (SOLEMN.includes(occasion) && (tone === 'funny' || tone === 'playful')) return 'warm';
-  if (occasion === 'sympathy' && tone === 'romantic') return 'heartfelt';
+  if ((occasion === 'sympathy' || occasion === 'anzac-day') && tone === 'romantic') return 'heartfelt';
   return tone;
 }
 
@@ -151,6 +151,25 @@ const OCC: Record<OccasionId, OccasionPhrases> = {
     wish: ['You make the people around you feel valued, and that includes me.', 'I’m so glad you’re in my life.', 'I hope today treats you as kindly as you treat everyone else.', 'You’re appreciated more than you know.'],
     funny: ['This card has no purpose other than to remind you that you’re great.', 'Consider this a hug in paper form.'],
   },
+  'australia-day': {
+    open: ['Happy Australia Day!', 'G’day and happy Australia Day!', 'Wishing you a cracking Australia Day.'],
+    wish: ['I hope your day is full of sunshine, good mates and something tasty off the barbie.', 'Here’s to beaches, backyard cricket and the best country going.', 'May your esky stay cold and your day stay warm.'],
+    funny: ['May your snags be golden and your sunscreen applied in time.', 'Slip, slop, slap — and save me a lamington.'],
+  },
+  'anzac-day': {
+    open: ['Lest we forget.', 'Thinking of you this ANZAC Day.', 'On ANZAC Day, we remember.'],
+    wish: ['Today we honour those who served and those who never came home.', 'We are grateful for their courage and their sacrifice.', 'I hope the dawn service brings a moment of peace and pride.', 'Their service will not be forgotten.'],
+  },
+  'melbourne-cup': {
+    open: ['Happy Cup Day!', 'It’s Melbourne Cup day!', 'Here’s to the race that stops a nation.'],
+    wish: ['May your horse run fast and your sweep come good.', 'Frock up, pop something bubbly and enjoy every minute.', 'Wishing you a winning day, whatever the odds.'],
+    funny: ['My tip: back the horse with the silliest name. It never works, but it’s tradition.', 'If your horse is still running at dinner time, at least you got value.'],
+  },
+  'footy-finals': {
+    open: ['It’s finals time!', 'Happy grand final day!', 'Carn the mighty team!'],
+    wish: ['Here’s hoping your team brings home the flag.', 'May the pies be hot, the umpiring fair and the result just right.', 'Win or lose, it’s always better watching with you.'],
+    funny: ['Remember: the umpire can’t hear you through the telly.', 'If we lose, we never speak of this card again.'],
+  },
 };
 
 const TONE: Record<Tone, { extra: string[]; close: string[] }> = {
@@ -217,7 +236,7 @@ export function composeMessages(req: MessageRequest, count = 3, seed = Date.now(
     const wishes = (tone === 'funny' || tone === 'playful') && occ.funny ? [...occ.funny, ...occ.wish] : occ.wish;
     const rel = solemn ? SOLEMN_REL[req.relationship] ?? '' : REL[req.relationship].length ? at(REL[req.relationship], i) : '';
     const detail = detailLine(req, i);
-    const extra = solemn && (tone === 'inspirational') ? 'Brighter days will come, and I will be beside you until they do.' : solemn && tone !== 'formal' && tone !== 'elegant' && tone !== 'heartfelt' ? '' : at(t.extra, i);
+    const extra = req.occasion === 'anzac-day' ? '' : solemn && (tone === 'inspirational') ? 'Brighter days will come, and I will be beside you until they do.' : solemn && tone !== 'formal' && tone !== 'elegant' && tone !== 'heartfelt' ? '' : at(t.extra, i);
     if (req.length === 'short') {
       body.push(detail || at(wishes, i));
     } else if (req.length === 'medium') {
@@ -232,7 +251,7 @@ export function composeMessages(req: MessageRequest, count = 3, seed = Date.now(
       if (!solemn && req.occasion !== 'thank-you') body.push(at(occ.wish, i + 2));
     }
     const text = [...new Set(body.filter(Boolean))].join(' ');
-    const sign = at(solemn && (tone === 'warm') ? ['Thinking of you,', 'With love,'] : t.close, i) + (req.sender.trim() ? '\n' + req.sender.trim() : '');
+    const sign = at(req.occasion === 'anzac-day' ? ['With respect,', 'Lest we forget,'] : solemn && (tone === 'warm') ? ['Thinking of you,', 'With love,'] : t.close, i) + (req.sender.trim() ? '\n' + req.sender.trim() : '');
     out.push([greeting(req, tone), text, sign].filter(Boolean).join('\n\n'));
   }
   return [...new Set(out)];
@@ -255,5 +274,41 @@ export const builtInProvider: MessageProvider = {
   },
 };
 
-/** Registered providers – add a server-backed AI provider here in future. */
+/** Registered providers. */
 export const providers: MessageProvider[] = [builtInProvider];
+
+/**
+ * AI provider backed by the user's OWN endpoint (see server/ai-worker.example.js).
+ * The endpoint keeps the API key on the server; the browser only ever sends
+ * the message brief below and receives suggestions back.
+ *
+ * Contract:  POST <endpoint>  { recipient, occasion, relationship, tone, length, details, sender }
+ *            → 200 { "messages": ["…", "…", "…"] }
+ */
+export function remoteProvider(endpoint: string): MessageProvider {
+  return {
+    id: 'remote-ai',
+    label: 'AI writer (your endpoint)',
+    async generate(req) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25000);
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+          body: JSON.stringify({ ...req, occasion: occasionLabel(req.occasion), tone: effectiveTone(req.occasion, req.tone) }),
+        });
+        if (!res.ok) throw new Error(`The AI writer returned an error (${res.status}).`);
+        const data = (await res.json()) as { messages?: unknown };
+        const out = Array.isArray(data.messages) ? data.messages.filter((m): m is string => typeof m === 'string' && !!m.trim()).map((m) => m.trim().slice(0, 1500)).slice(0, 5) : [];
+        if (!out.length) throw new Error('The AI writer did not return any messages.');
+        return out;
+      } catch (e) {
+        throw new Error((e as Error).name === 'AbortError' ? 'The AI writer took too long to respond.' : (e as Error).message || 'The AI writer could not be reached.');
+      } finally { clearTimeout(timer); }
+    },
+  };
+}
+
+export function isValidEndpoint(url: string): boolean {
+  try { const u = new URL(url); return u.protocol === 'https:' || u.hostname === 'localhost' || u.hostname === '127.0.0.1'; } catch { return false; }
+}

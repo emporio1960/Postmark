@@ -1,7 +1,8 @@
 // Application store: saved cards, favourites, recents, occasions, settings.
 // Everything is persisted locally through ./storage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { OccasionReminder, SavedCard, Settings } from '../types';
+import type { Contact, OccasionReminder, SavedCard, Settings } from '../types';
+import type { Backup } from './backup';
 import { DEFAULT_SETTINGS } from '../types';
 import { storage } from './storage';
 import { uid } from './utils';
@@ -13,6 +14,7 @@ interface Store {
   favTemplates: string[];
   recentTemplates: string[];
   occasions: OccasionReminder[];
+  contacts: Contact[];
   settings: Settings;
   saveCard(card: SavedCard): Promise<void>;
   deleteCard(id: string): Promise<void>;
@@ -22,6 +24,10 @@ interface Store {
   markTemplateUsed(id: string): void;
   saveOccasion(o: OccasionReminder): void;
   deleteOccasion(id: string): void;
+  saveContact(c: Contact): void;
+  deleteContact(id: string): void;
+  /** Merge a backup into what is already on this device. */
+  restore(b: Backup): Promise<{ cards: number }>;
   updateSettings(patch: Partial<Settings>): void;
   clearAll(): Promise<void>;
 }
@@ -35,6 +41,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [favTemplates, setFavTemplates] = useState<string[]>([]);
   const [recentTemplates, setRecentTemplates] = useState<string[]>([]);
   const [occasions, setOccasions] = useState<OccasionReminder[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
@@ -43,12 +50,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let alive = true;
     (async () => {
       try {
-        const [c, f, r, o, s, p] = await Promise.all([
+        const [c, f, r, o, s, p, k] = await Promise.all([
           storage.allCards(), storage.get<string[]>('favTemplates', []), storage.get<string[]>('recentTemplates', []),
           storage.get<OccasionReminder[]>('occasions', []), storage.get<Partial<Settings>>('settings', {}), storage.isPersistent(),
+          storage.get<Contact[]>('contacts', []),
         ]);
         if (!alive) return;
-        setCards(c); setFavTemplates(f); setRecentTemplates(r); setOccasions(o);
+        setCards(c); setFavTemplates(f); setRecentTemplates(r); setOccasions(o); setContacts(k);
         setSettings({ ...DEFAULT_SETTINGS, ...s }); setPersistentOk(p);
       } catch {
         if (alive) setPersistentOk(false);
@@ -118,20 +126,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setOccasions((list) => { const next = list.filter((x) => x.id !== id); safe(storage.set('occasions', next)); return next; });
   }, [safe]);
 
+  const saveContact = useCallback((c: Contact) => {
+    setContacts((list) => {
+      const next = list.some((x) => x.id === c.id) ? list.map((x) => (x.id === c.id ? c : x)) : [...list, c];
+      safe(storage.set('contacts', next)); return next;
+    });
+  }, [safe]);
+
+  const deleteContact = useCallback((id: string) => {
+    setContacts((list) => { const next = list.filter((x) => x.id !== id); safe(storage.set('contacts', next)); return next; });
+  }, [safe]);
+
+  const restore = useCallback(async (b: Backup) => {
+    const byId = <T extends { id: string }>(current: T[], incoming: T[]) => {
+      const map = new Map(current.map((x) => [x.id, x]));
+      for (const x of incoming) map.set(x.id, x);
+      return [...map.values()];
+    };
+    for (const card of b.cards) await storage.putCard(card);
+    const all = await storage.allCards();
+    const fav = [...new Set([...b.favTemplates, ...favTemplates])];
+    const rec = [...new Set([...recentTemplates, ...b.recentTemplates])].slice(0, 12);
+    const occ = byId(occasions, b.occasions), con = byId(contacts, b.contacts);
+    const set = { ...settings, ...b.settings };
+    await Promise.all([storage.set('favTemplates', fav), storage.set('recentTemplates', rec), storage.set('occasions', occ), storage.set('contacts', con), storage.set('settings', set)]);
+    setCards(all); setFavTemplates(fav); setRecentTemplates(rec); setOccasions(occ); setContacts(con); setSettings(set);
+    return { cards: b.cards.length };
+  }, [favTemplates, recentTemplates, occasions, contacts, settings]);
+
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => { const next = { ...s, ...patch }; safe(storage.set('settings', next)); return next; });
   }, [safe]);
 
   const clearAll = useCallback(async () => {
     await storage.clearAll();
-    setCards([]); setFavTemplates([]); setRecentTemplates([]); setOccasions([]); setSettings(DEFAULT_SETTINGS);
+    setCards([]); setFavTemplates([]); setRecentTemplates([]); setOccasions([]); setContacts([]); setSettings(DEFAULT_SETTINGS);
   }, []);
 
   const value = useMemo<Store>(() => ({
-    ready, persistent: persistentOk, cards, favTemplates, recentTemplates, occasions, settings,
+    ready, persistent: persistentOk, cards, favTemplates, recentTemplates, occasions, contacts, settings, saveContact, deleteContact, restore,
     saveCard, deleteCard, duplicateCard, toggleCardFavourite, toggleTemplateFavourite, markTemplateUsed,
     saveOccasion, deleteOccasion, updateSettings, clearAll,
-  }), [ready, persistentOk, cards, favTemplates, recentTemplates, occasions, settings, saveCard, deleteCard, duplicateCard,
+  }), [ready, persistentOk, cards, favTemplates, recentTemplates, occasions, contacts, settings, saveContact, deleteContact, restore, saveCard, deleteCard, duplicateCard,
     toggleCardFavourite, toggleTemplateFavourite, markTemplateUsed, saveOccasion, deleteOccasion, updateSettings, clearAll]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

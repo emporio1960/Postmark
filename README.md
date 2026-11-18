@@ -30,10 +30,14 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`
 | Canvas renderer shared by thumbnails, editor, preview and export | `src/render/renderer.ts` |
 | Procedural artwork, vector stickers, photo filters | `src/render/art.ts`, `stickers.ts`, `images.ts` |
 | PNG / PDF / share / print | `src/render/export.ts` |
-| 46 templates, 18 occasions, 10 styles | `src/data/templates.ts`, `occasions.ts` |
+| 64 templates, 22 occasions (incl. Australian ones), 10 styles | `src/data/templates.ts`, `occasions.ts` |
 | Message writer (provider interface, ready for an AI backend) | `src/data/messages.ts` |
 | Local persistence and app store | `src/lib/storage.ts`, `store.tsx` |
 | Premium seam (no payments implemented) | `src/lib/entitlements.ts` |
+| Shareable card links (card travels inside the link) | `src/lib/share.ts`, `src/pages/Shared.tsx` |
+| Video export, envelope designer | `src/render/video.ts`, `src/render/envelope.ts` |
+| Backup / restore, calendar (.ics) export | `src/lib/backup.ts`, `src/lib/ics.ts` |
+| Example AI message backend (keeps the key server-side) | `server/ai-worker.example.js` |
 | Editor (stage, undo/redo, panels) | `src/editor/` |
 | Screens | `src/pages/` |
 
@@ -41,7 +45,9 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`
 
 - **Card units:** 200 units = 1 inch. Portrait 5 × 7 in, landscape 7 × 5 in, square 5 × 5 in. "High" export quality is 300 dpi.
 - **Fonts** are bundled through `@fontsource` — no external font service.
-- **AI messages:** implement `MessageProvider` with a class that calls your own backend and add it to `providers`. Never place an API key in frontend code.
+- **AI messages:** deploy `server/ai-worker.example.js` (or any endpoint with the same contract) and paste its URL into Settings → AI message writer. The API key stays on that server; the built-in writer is used whenever the endpoint is missing or fails.
+- **Card links** only work for cards small enough to fit in a URL, which in practice means cards without photographs. Cards with photos share as images.
+- **Video export** uses the browser's MediaRecorder, so the file is MP4 or WebM depending on the browser.
 - **Notifications** only fire while the app is open; background reminders would need a server and push subscription.
 - **Text the message** (phones only) opens the messaging app with the card's words prefilled; to send the card image by SMS/MMS use Share.
 - **Share / print / PDF download** depend on the browser. Inside an embedded preview frame they are hidden or replaced with a save-image fallback.

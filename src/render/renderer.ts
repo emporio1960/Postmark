@@ -65,22 +65,52 @@ function drawText(ctx: Ctx, el: TextEl) {
   ctx.save();
   ctx.font = fontString(el);
   setSpacing(ctx, el.spacing);
-  ctx.fillStyle = el.color;
   ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  const shadowOn = () => { ctx.shadowColor = 'rgba(20,14,8,.4)'; ctx.shadowBlur = el.size * 0.14; ctx.shadowOffsetY = el.size * 0.05; };
+  const shadowOff = () => { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; };
+  // Outline first (carrying the shadow), then the fill on top.
+  const paint = (s: string, x: number, y: number) => {
+    if (el.shadow) shadowOn();
+    if (el.outline) {
+      ctx.lineWidth = el.outline * 2; ctx.strokeStyle = el.outlineColor ?? '#FFFFFF';
+      ctx.strokeText(s, x, y); shadowOff();
+    }
+    ctx.fillStyle = el.color; ctx.fillText(s, x, y);
+  };
+  const curve = el.curve ?? 0;
   lines.forEach((line, i) => {
     const y = el.y + lineH * (i + 0.5);
-    if (!supportsSpacing && el.spacing) {
+    if (Math.abs(curve) >= 2 && line) {
+      // Curved text: place each glyph along an arc centred on the text box.
+      const chars = [...line];
+      const widths = chars.map((ch) => ctx.measureText(ch).width + (supportsSpacing ? 0 : el.spacing));
+      const total = widths.reduce((a, b) => a + b, 0);
+      const A = (curve / 100) * Math.PI, R = total / Math.abs(A), up = A > 0;
+      const cx = el.x + el.w / 2, cy = up ? y + R : y - R;
+      ctx.textAlign = 'center';
+      let s = 0;
+      chars.forEach((ch, k) => {
+        const phi = (s + widths[k] / 2 - total / 2) / R;
+        ctx.save();
+        ctx.translate(cx + R * Math.sin(phi), up ? cy - R * Math.cos(phi) : cy + R * Math.cos(phi));
+        ctx.rotate(up ? phi : -phi);
+        paint(ch, 0, 0);
+        ctx.restore();
+        s += widths[k];
+      });
+    } else if (!supportsSpacing && el.spacing) {
       // Manual tracking for browsers without canvas letter-spacing.
       const total = widthOf(ctx, line, el.spacing) - el.spacing;
       let x = el.align === 'left' ? el.x : el.align === 'right' ? el.x + el.w - total : el.x + (el.w - total) / 2;
       ctx.textAlign = 'left';
-      for (const ch of line) { ctx.fillText(ch, x, y); x += ctx.measureText(ch).width + el.spacing; }
+      for (const ch of line) { paint(ch, x, y); x += ctx.measureText(ch).width + el.spacing; }
     } else {
       ctx.textAlign = el.align;
       // canvas letter-spacing trails the last glyph; nudge so centring stays optical
       const fix = el.spacing ? (el.align === 'center' ? el.spacing / 2 : el.align === 'right' ? el.spacing : 0) : 0;
       const x = el.align === 'left' ? el.x : el.align === 'right' ? el.x + el.w : el.x + el.w / 2;
-      ctx.fillText(line, x + fix, y);
+      paint(line, x + fix, y);
     }
   });
   ctx.restore();
@@ -175,6 +205,16 @@ function drawBorder(ctx: Ctx, b: Border, W: number, H: number) {
 }
 
 function drawElement(ctx: Ctx, el: CardElement) {
+  if (el.rotation) {
+    const b = elementBox(el), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate((el.rotation * Math.PI) / 180); ctx.translate(-cx, -cy);
+    drawPlain(ctx, el);
+    ctx.restore();
+  } else drawPlain(ctx, el);
+}
+
+function drawPlain(ctx: Ctx, el: CardElement) {
   if (el.type === 'text') drawText(ctx, el);
   else if (el.type === 'image') drawImageEl(ctx, el);
   else drawSticker(ctx, el.kind, el.color, el.x, el.y, el.w, el.h);

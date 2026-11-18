@@ -1,4 +1,5 @@
 // Vector stickers drawn inside a 100 × 100 box so they scale cleanly.
+import qrcode from 'qrcode-generator';
 type Ctx = CanvasRenderingContext2D;
 type Draw = (ctx: Ctx, color: string) => void;
 
@@ -102,6 +103,47 @@ export const STICKERS: Record<string, { label: string; draw: Draw }> = {
   banner: { label: 'Banner', draw: (c, col) => path(c, 'M4 32h92L84 50l12 18H4l12-18z', col) },
   circle: { label: 'Dot', draw: (c, col) => { c.fillStyle = col; c.beginPath(); c.arc(50, 50, 44, 0, Math.PI * 2); c.fill(); } },
   halo: { label: 'Ring line', draw: (c, col) => { c.strokeStyle = col; c.lineWidth = 3; c.beginPath(); c.arc(50, 50, 46, 0, Math.PI * 2); c.stroke(); } },
+  poppy: {
+    label: 'Poppy', draw: (c, col) => {
+      c.fillStyle = col;
+      ([[50, 30], [72, 50], [50, 70], [28, 50]] as number[][]).forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 25, 0, Math.PI * 2); c.fill(); });
+      c.fillStyle = '#2B2622'; c.beginPath(); c.arc(50, 50, 11, 0, Math.PI * 2); c.fill();
+    },
+  },
+  footy: {
+    label: 'Footy', draw: (c, col) => {
+      c.save(); c.translate(50, 50); c.rotate(-0.6); c.fillStyle = col;
+      c.beginPath(); c.ellipse(0, 0, 44, 26, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = soft; c.lineWidth = 3; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-16, 0); c.lineTo(16, 0); for (let x = -12; x <= 12; x += 8) { c.moveTo(x, -6); c.lineTo(x, 6); } c.stroke();
+      c.restore();
+    },
+  },
+  southernCross: {
+    label: 'Southern Cross', draw: (c, col) => {
+      const star = (x: number, y: number, r: number) => {
+        c.beginPath();
+        for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 - Math.PI / 2, rr = i % 2 ? r * 0.48 : r; i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+        c.closePath(); c.fill();
+      };
+      c.fillStyle = col; star(50, 14, 11); star(22, 46, 11); star(78, 40, 11); star(50, 84, 12); star(64, 58, 6);
+    },
+  },
+  horseshoe: {
+    label: 'Horseshoe', draw: (c, col) => {
+      c.strokeStyle = col; c.lineWidth = 15; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(22, 88); c.lineTo(22, 48); c.arc(50, 48, 28, Math.PI, 0); c.lineTo(78, 88); c.stroke();
+      c.fillStyle = soft; ([[22, 70], [22, 50], [32, 30], [50, 21], [68, 30], [78, 50], [78, 70]] as number[][]).forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 2.6, 0, Math.PI * 2); c.fill(); });
+    },
+  },
+  trophy: {
+    label: 'Trophy', draw: (c, col) => {
+      path(c, 'M28 10h44v26a22 22 0 0 1-44 0zM44 58h12v16H44zM30 76h40v12H30z', col);
+      c.strokeStyle = col; c.lineWidth = 6;
+      c.beginPath(); c.arc(26, 26, 12, Math.PI * 0.5, Math.PI * 1.5); c.stroke();
+      c.beginPath(); c.arc(74, 26, 12, -Math.PI * 0.5, Math.PI * 0.5); c.stroke();
+    },
+  },
   rule: { label: 'Divider', draw: (c, col) => { c.fillStyle = col; c.fillRect(4, 48.5, 36, 3); c.fillRect(60, 48.5, 36, 3); path(c, 'M50 40l10 10-10 10-10-10z', col); } },
 };
 
@@ -111,11 +153,22 @@ export const EMOJI_STICKERS = [
   '🎂', '🎉', '🎈', '🎁', '🥂', '🍾', '💐', '🌸', '🌷', '🌹', '🌻', '🌿', '🍀', '💍', '💕', '❤️',
   '💌', '✨', '⭐', '🌙', '☀️', '🌈', '🎄', '⛄', '🕊️', '🕯️', '🎓', '🏆', '👑', '🎀', '👶', '🧸',
   '🐣', '🐰', '🦋', '🐝', '🍰', '☕', '🏖️', '🎶',
+  '🦘', '🐨', '🇦🇺', '🏉', '🏇', '🌺', '🍻', '🏏',
 ];
 
 export function drawSticker(ctx: Ctx, kind: string, color: string, x: number, y: number, w: number, h: number) {
   ctx.save();
-  if (kind.startsWith('emoji:')) {
+  if (kind.startsWith('qr:')) {
+    const m = qrMatrix(kind.slice(3));
+    const s = Math.min(w, h), ox = x + (w - s) / 2, oy = y + (h - s) / 2;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.roundRect(ox, oy, s, s, s * 0.06); ctx.fill();
+    if (m) {
+      const n = m.length, cell = (s * 0.86) / n, pad = s * 0.07;
+      ctx.fillStyle = color;
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c]) ctx.fillRect(ox + pad + c * cell, oy + pad + r * cell, cell + 0.4, cell + 0.4);
+    }
+  } else if (kind.startsWith('emoji:')) {
     const size = Math.min(w, h) * 0.86;
     ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -125,4 +178,20 @@ export function drawSticker(ctx: Ctx, kind: string, color: string, x: number, y:
     (STICKERS[kind] ?? STICKERS.heart).draw(ctx, color);
   }
   ctx.restore();
+}
+
+const qrCache = new Map<string, boolean[][] | null>();
+
+/** Module matrix for a QR code, or null when the text is too long to encode. */
+export function qrMatrix(text: string): boolean[][] | null {
+  if (qrCache.has(text)) return qrCache.get(text) ?? null;
+  let out: boolean[][] | null = null;
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(text); qr.make();
+    const n = qr.getModuleCount();
+    out = Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => qr.isDark(r, c)));
+  } catch { out = null; }
+  qrCache.set(text, out);
+  return out;
 }

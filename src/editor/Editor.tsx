@@ -1,7 +1,7 @@
 // The card creation editor.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Check, CheckCircle2, ChevronDown, ChevronUp, Circle, Eye, Image as ImageIcon, Loader2, MessageSquareHeart, Palette, Redo2, Shapes, TriangleAlert, Type, Undo2, type LucideIcon } from 'lucide-react';
-import type { CardDoc, CardElement, CardStatus, FaceKey, SavedCard, TextEl } from '../types';
+import type { CardDoc, CardElement, CardStatus, EnvelopeSpec, FaceKey, SavedCard, TextEl } from '../types';
 import { cardSize } from '../types';
 import { useStore } from '../lib/store';
 import { navigate } from '../lib/router';
@@ -53,11 +53,13 @@ function EditorInner({ initial }: { initial: SavedCard }) {
   const [preview, setPreview] = useState(false);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
   const [focusSignal, setFocusSignal] = useState(0);
+  const [cropMode, setCropMode] = useState(false);
+  const [envelope, setEnvelope] = useState<EnvelopeSpec | undefined>(initial.envelope);
   const selected: CardElement | undefined = doc[face].elements.find((e) => e.id === selectedId);
 
   // ----- autosave -----
-  const latest = useRef({ doc, name, status });
-  latest.current = { doc, name, status };
+  const latest = useRef({ doc, name, status, envelope });
+  latest.current = { doc, name, status, envelope };
   const favourite = cards.find((c) => c.id === initial.id)?.favourite ?? initial.favourite;
   const favRef = useRef(favourite); favRef.current = favourite;
   const base = useRef(initial).current; // stable id / occasion / createdAt
@@ -65,8 +67,8 @@ function EditorInner({ initial }: { initial: SavedCard }) {
   const first = useRef(true);
   const persist = useCallback(() => {
     timer.current = null;
-    const { doc: d, name: n, status: s } = latest.current;
-    return saveCard({ ...base, ...d, name: n.trim() || 'Untitled card', status: s, favourite: favRef.current, updatedAt: Date.now() })
+    const { doc: d, name: n, status: s, envelope: env } = latest.current;
+    return saveCard({ ...base, ...d, envelope: env, name: n.trim() || 'Untitled card', status: s, favourite: favRef.current, updatedAt: Date.now() })
       .then(() => setSaveState('saved')).catch(() => setSaveState('error'));
   }, [base, saveCard]);
 
@@ -75,19 +77,19 @@ function EditorInner({ initial }: { initial: SavedCard }) {
     setSaveState('saving');
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(persist, 450);
-  }, [doc, name, status, persist]);
+  }, [doc, name, status, envelope, persist]);
 
   useEffect(() => () => { if (timer.current) { window.clearTimeout(timer.current); void persist(); } }, [persist]);
 
   // ----- selection -----
   const select = useCallback((id: string | null) => {
-    setSelectedId(id);
+    setSelectedId((prev) => { if (prev !== id) setCropMode(false); return id; });
     if (!id) return;
     const el = latest.current.doc[face].elements.find((e) => e.id === id);
     if (el) setTab(el.type === 'text' ? 'text' : el.type === 'image' ? 'photo' : 'elements');
   }, [face]);
 
-  const switchFace = (f: FaceKey) => { setFace(f); setSelectedId(null); };
+  const switchFace = (f: FaceKey) => { setFace(f); setSelectedId(null); setCropMode(false); };
 
   // ----- keyboard shortcuts -----
   useEffect(() => {
@@ -132,7 +134,7 @@ function EditorInner({ initial }: { initial: SavedCard }) {
     toast('Message added inside your card');
   };
 
-  const panel: PanelProps = { doc, face, apply, selected, select, occasion: initial.occasion, signature: settings.signature };
+  const panel: PanelProps = { doc, face, apply, selected, select, occasion: initial.occasion, signature: settings.signature, cropMode, setCropMode };
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-ivory-100">
@@ -160,7 +162,8 @@ function EditorInner({ initial }: { initial: SavedCard }) {
             <Segmented<FaceKey> label="Card side" value={face} onChange={switchFace} options={[{ id: 'front', label: 'Front' }, { id: 'inside', label: 'Inside' }]} />
             {saveState === 'error' && <span className="text-xs text-rosewood sm:hidden">Not saved</span>}
           </div>
-          <Stage doc={doc} face={face} selectedId={selectedId} onSelect={select} apply={apply}
+          <Stage doc={doc} face={face} selectedId={selectedId} onSelect={select} apply={apply} cropMode={cropMode}
+            onToggleCrop={() => { setCropMode((c) => !c); setTab('photo'); }}
             onEditText={() => { setTab('text'); setPanelOpen(true); setFocusSignal((n) => n + 1); }} />
         </section>
 
@@ -183,13 +186,13 @@ function EditorInner({ initial }: { initial: SavedCard }) {
               {tab === 'text' && <TextPanel {...panel} focusSignal={focusSignal} />}
               {tab === 'photo' && <PhotoPanel {...panel} />}
               {tab === 'elements' && <ElementsPanel {...panel} />}
-              {tab === 'message' && <MessageWriter occasion={initial.occasion as OccasionId} onUse={applyMessage} />}
+              {tab === 'message' && <MessageWriter occasion={initial.occasion as OccasionId} recipient={initial.recipient} onUse={applyMessage} />}
             </div>
           )}
         </aside>
       </div>
 
-      {preview && <PreviewModal doc={doc} name={name.trim() || 'Untitled card'} onClose={() => setPreview(false)} />}
+      {preview && <PreviewModal doc={doc} name={name.trim() || 'Untitled card'} recipient={initial.recipient} envelope={envelope} onEnvelopeChange={setEnvelope} onClose={() => setPreview(false)} />}
     </div>
   );
 }

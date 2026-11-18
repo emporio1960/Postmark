@@ -14,6 +14,7 @@ import { Favourites, MyCards } from './pages/MyCards';
 import { Occasions } from './pages/Occasions';
 import { Settings } from './pages/Settings';
 import { Editor } from './editor/Editor';
+import { Shared } from './pages/Shared';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -69,6 +70,7 @@ function Shell() {
   useEffect(() => { document.documentElement.classList.toggle('reduce-motion', settings.reduceMotion); }, [settings.reduceMotion]);
 
   if (route.view === 'edit' && route.id) return <Editor id={route.id} />;
+  if (route.view === 'shared' && route.id) return <Shared payload={route.id} />;
 
   let page: ReactNode;
   switch (route.view) {

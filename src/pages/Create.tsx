@@ -27,10 +27,11 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 }
 
 export function Create({ params }: { params: Params }) {
-  const { settings } = useStore();
+  const { settings, contacts } = useStore();
   const start = useStartCard();
   const [occasion, setOccasion] = useState<OccasionId>((params.occasion as OccasionId) || 'birthday');
   const [orientation, setOrientation] = useState<Orientation>(settings.defaultOrientation);
+  const [recipient, setRecipient] = useState(params.recipient ?? '');
   const designs = TEMPLATES.filter((t) => t.occasion === occasion);
   const label = OCCASIONS.find((o) => o.id === occasion)?.label ?? '';
 
@@ -42,6 +43,12 @@ export function Create({ params }: { params: Params }) {
         <div className="flex flex-wrap gap-2">
           {OCCASIONS.map((o) => <Chip key={o.id} active={occasion === o.id} onClick={() => setOccasion(o.id)}><span aria-hidden>{o.emoji}</span>{o.label}</Chip>)}
         </div>
+        <label className="mt-5 block max-w-sm">
+          <span className="label">Who is it for? (optional)</span>
+          <input className="field" list="contact-names" value={recipient} maxLength={50} onChange={(e) => setRecipient(e.target.value)} placeholder="e.g. Grandma Rose" />
+          <datalist id="contact-names">{contacts.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+          <span className="mt-1.5 block text-xs text-ink-mute">The inside of the card and its envelope will be addressed to them.</span>
+        </label>
       </Step>
 
       <Step n={2} title="Choose a card shape">
@@ -59,9 +66,9 @@ export function Create({ params }: { params: Params }) {
 
       <Step n={3} title={`Pick a ${label} design`}>
         <div className={cx(GRID, orientation === 'landscape' && '!grid-cols-1 sm:!grid-cols-2 lg:!grid-cols-3 xl:!grid-cols-4')}>
-          {designs.map((t) => <TemplateCard key={t.id + orientation} template={t} orientation={orientation} />)}
+          {designs.map((t) => <TemplateCard key={t.id + orientation} template={t} orientation={orientation} recipient={recipient} />)}
           <article className="min-w-0">
-            <button type="button" onClick={() => start({ orientation, occasion })}
+            <button type="button" onClick={() => start({ orientation, occasion, recipient })}
               className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gold-400 bg-ivory-50/70 px-3 text-center text-gold-800 transition hover:-translate-y-1 hover:border-gold-600 hover:bg-gold-100/50"
               style={{ aspectRatio: orientation === 'portrait' ? '1000 / 1400' : orientation === 'landscape' ? '1400 / 1000' : '1 / 1' }}>
               <FilePlus2 className="h-8 w-8" strokeWidth={1.4} />
@@ -72,7 +79,7 @@ export function Create({ params }: { params: Params }) {
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-ivory-300/70 pt-5">
           <p className="text-sm text-ink-soft">Looking for a different style?</p>
-          <Button size="sm" onClick={() => start({ orientation, occasion })}>Start from blank</Button>
+          <Button size="sm" onClick={() => start({ orientation, occasion, recipient })}>Start from blank</Button>
         </div>
       </Step>
     </div>

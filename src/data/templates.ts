@@ -54,6 +54,10 @@ const INSIDE: Record<OccasionId, { greeting: string; message: string; close: str
   graduation: { greeting: 'Congratulations, Graduate!', message: 'All those late nights were worth it. The world is lucky to have you — go and do wonderful things.', close: 'So proud of you,' },
   'baby-shower': { greeting: 'Welcome, little one', message: 'Wishing you a lifetime of tiny toes, sleepy cuddles and so much love. Congratulations on your precious new arrival.', close: 'With love,' },
   'just-because': { greeting: 'Just because', message: 'No special reason — I simply wanted you to know that you’re thought of, appreciated and loved.', close: 'With love,' },
+  'australia-day': { greeting: 'Happy Australia Day', message: 'Here’s to sunshine, good mates and a snag on the barbie. Hope your day is a ripper from start to finish.', close: 'Cheers,' },
+  'anzac-day': { greeting: 'Lest we forget', message: 'Today we pause to remember those who served and those who never came home. Thinking of you and your family this ANZAC Day.', close: 'With respect,' },
+  'melbourne-cup': { greeting: 'Happy Cup Day!', message: 'Frock up, pick a winner and pop something bubbly. May your horse run fast and your sweep come good.', close: 'Good luck,' },
+  'footy-finals': { greeting: 'It’s finals time!', message: 'The pies are hot, the scarf is on and the nerves are jangling. Here’s hoping your team brings home the flag.', close: 'Go well,' },
 };
 
 export const TEMPLATES: TemplateSpec[] = [
@@ -121,6 +125,26 @@ export const TEMPLATES: TemplateSpec[] = [
   { id: 'jb-min', name: 'Thinking of You', occasion: 'just-because', style: 'minimalist', bg: solid('#EEF1EC'), art: art('geo', ['#7D9479', '#2B2622', '#C2A05A'], 2), ink: '#2F3A30', accent: '#7D9479', title: 'thinking\nof you', titleFont: 'Playfair Display', titleSize: 124, titleItalic: true },
   { id: 'jb-floral', name: 'Hello Lovely', occasion: 'just-because', style: 'floral', bg: solid('#FFF7F0'), art: art('floral', ['#F2A07B', '#F7C59F', '#E8837E', '#7FA08A', '#FCE9B2'], 69), ink: '#6B3F35', accent: '#C9785A', title: 'Hello\nLovely', titleFont: 'Great Vibes', titleSize: 200 },
   { id: 'jb-sun', name: 'You Are My Sunshine', occasion: 'just-because', style: 'abstract', bg: solid('#FBEFD2'), art: art('sunburst', ['#F9E3B0', '#FBEFD2'], 1), ink: '#7A5520', accent: '#C08A2F', sticker: { kind: 'sun', color: '#E8B04A' }, title: 'You Are My\nSunshine', titleFont: 'Playfair Display', titleSize: 100 },
+  // Australian occasions
+  { id: 'aus-sunburnt', name: 'Sunburnt Country', occasion: 'australia-day', style: 'nature', trending: true, bg: solid('#FCEBD2'), art: art('hills', ['#F2B84B', '#E9A67A', '#D9826A', '#B5533C', '#7A3B2E'], 71), ink: '#7A3B2E', accent: '#B5533C', title: 'Happy\nAustralia Day', sub: 'here’s to the sunburnt country', titleFont: 'Playfair Display', titleSize: 92, layout: 'top' },
+  { id: 'aus-cross', name: 'Southern Cross', occasion: 'australia-day', style: 'typography', bg: grad('#1F2A44', '#101A30'), art: art('stars', ['#F5EFE2', '#DEC892'], 73), ink: '#F5EFE2', accent: '#DEC892', sticker: { kind: 'southernCross', color: '#F5EFE2' }, title: 'G’DAY', sub: 'happy Australia Day, mate', titleFont: 'Bebas Neue', titleSize: 330, paper: '#FBF7EF' },
+  { id: 'anzac-poppy', name: 'Lest We Forget', occasion: 'anzac-day', style: 'minimalist', bg: solid('#F7F3EC'), art: art('none', [GOLD]), border: { kind: 'line', color: '#2B2622', inset: 56 }, ink: INK, accent: '#B5362F', sticker: { kind: 'poppy', color: '#B5362F' }, title: 'Lest We\nForget', sub: 'ANZAC Day · 25 April', titleFont: 'Cormorant Garamond', titleSize: 124 },
+  { id: 'anzac-dawn', name: 'Dawn Service', occasion: 'anzac-day', style: 'nature', bg: solid('#FBEBD8'), art: art('hills', ['#F2B84B', '#E9A67A', '#B5766F', '#6B5B73', '#3D405B'], 75), ink: '#3D405B', accent: '#B5362F', title: 'We Will\nRemember Them', sub: 'ANZAC Day', titleFont: 'Playfair Display', titleSize: 88, layout: 'top' },
+  { id: 'cup-race', name: 'Race Day', occasion: 'melbourne-cup', style: 'luxury', bg: solid('#FFFDF8'), art: art('confetti', ['#C2A05A', '#DEC892', '#A8843F', '#EBDDB9'], 77), border: { kind: 'double', color: GOLD, inset: 44 }, ink: '#6E5626', accent: '#A8843F', sticker: { kind: 'horseshoe', color: GOLD }, eyebrow: 'the race that stops a nation', title: 'Happy\nCup Day', titleFont: 'Playfair Display', titleSize: 116 },
+  { id: 'cup-fun', name: 'Odds-On Favourite', occasion: 'melbourne-cup', style: 'funny', bg: solid('#EAF3EC'), art: art('terrazzo', ['#2F4A3A', '#C2A05A', '#E9806E'], 79), ink: '#2F4A3A', accent: '#A8843F', title: 'You’re my\nodds-on\nfavourite', sub: 'happy Melbourne Cup day', titleFont: 'Abril Fatface', titleSize: 96 },
+  { id: 'footy-grand', name: 'Grand Final Day', occasion: 'footy-finals', style: 'typography', trending: true, bg: solid('#1F2A44'), art: art('stripes', ['#E0B252', '#F5EFE2', '#B5362F'], 1), ink: '#F5EFE2', accent: '#E0B252', sticker: { kind: 'footy', color: '#C9785A' }, title: 'GRAND\nFINAL\nDAY', titleFont: 'Bebas Neue', titleSize: 220, paper: '#FBF7EF' },
+  { id: 'footy-fun', name: 'Carn the Team', occasion: 'footy-finals', style: 'funny', bg: solid('#FFF6E5'), art: art('confetti', ['#B5362F', '#1F2A44', '#E0B252', '#7FB7BE'], 81), ink: '#1F2A44', accent: '#B5362F', sticker: { kind: 'trophy', color: '#C2A05A' }, title: 'Carn the\nmighty team!', sub: 'happy footy finals', titleFont: 'Abril Fatface', titleSize: 96 },
+  // More designs
+  { id: 'bday-cake', name: 'Cake O’Clock', occasion: 'birthday', style: 'abstract', bg: solid('#FFF4EC'), art: art('terrazzo', ['#E9806E', '#F2B84B', '#B79AD6', '#7FB7BE'], 83), ink: '#4A2F2F', accent: '#E9806E', sticker: { kind: 'cake', color: '#E9806E' }, title: 'It’s cake\no’clock', sub: 'happy birthday', titleFont: 'Abril Fatface', titleSize: 116 },
+  { id: 'bday-sun', name: 'Around the Sun', occasion: 'birthday', style: 'minimalist', bg: solid('#FBF7EF'), art: art('geo', ['#E8B04A', '#2B2622', '#E07A5F'], 2), ink: INK, accent: '#B9822B', sticker: { kind: 'sun', color: '#E8B04A' }, title: 'Another trip\naround the sun', sub: 'happy birthday', titleFont: 'Playfair Display', titleSize: 84, titleItalic: true },
+  { id: 'xmas-summer', name: 'Summer Christmas', occasion: 'christmas', style: 'seasonal', bg: solid('#FFF6E5'), art: art('hills', ['#F2B84B', '#F8DDB0', '#9FD0D6', '#5FA9B6', '#2D6E7E'], 85), ink: '#2D6E7E', accent: '#C9785A', title: 'Merry\nChristmas', sub: 'from sunny Australia', titleFont: 'Great Vibes', titleSize: 170, layout: 'top' },
+  { id: 'wed-married', name: 'Just Married', occasion: 'wedding', style: 'minimalist', bg: solid('#F7F4EE'), art: art('none', [GOLD]), border: { kind: 'line', color: GOLD, inset: 56 }, ink: INK, accent: '#A8843F', sticker: { kind: 'rule', color: GOLD }, title: 'just\nmarried', sub: 'congratulations to you both', titleFont: 'Playfair Display', titleSize: 136, titleItalic: true },
+  { id: 'baby-twinkle', name: 'Twinkle, Twinkle', occasion: 'baby-shower', style: 'abstract', bg: grad('#2C3350', '#1A1E30'), art: art('stars', ['#F5EFE2', '#F2CC8F'], 87), ink: '#F5EFE2', accent: '#F2CC8F', sticker: { kind: 'moon', color: '#F2CC8F' }, title: 'Twinkle,\nTwinkle', sub: 'welcome, little star', titleFont: 'Great Vibes', titleSize: 170, paper: '#FBF7EF' },
+  { id: 'ty-bunch', name: 'Thanks a Bunch', occasion: 'thank-you', style: 'floral', bg: solid('#FFF8F1'), art: art('floral', ['#F2A07B', '#F4B6C2', '#E8837E', '#8FA58A', '#FCE9B2'], 89), ink: '#6B3F35', accent: '#C9785A', title: 'Thanks\na Bunch', titleFont: 'Great Vibes', titleSize: 200 },
+  { id: 'congrats-home', name: 'Home Sweet Home', occasion: 'congratulations', style: 'nature', bg: solid('#F3F1E7'), art: art('botanical', ['#7D9479', '#A9B8A0', '#5E7A63'], 91), ink: '#35463A', accent: '#6C8468', eyebrow: 'congratulations on your new', title: 'Home\nSweet Home', titleFont: 'Playfair Display', titleSize: 104 },
+  { id: 'grad-smarty', name: 'Smarty Pants', occasion: 'graduation', style: 'funny', bg: solid('#FFFDF8'), art: art('confetti', ['#3D405B', '#E07A5F', '#F2CC8F', '#81B29A'], 93), ink: '#3D405B', accent: '#E07A5F', title: 'Officially\na smarty\npants', sub: 'congratulations, graduate', titleFont: 'Abril Fatface', titleSize: 100 },
+  { id: 'val-you-me', name: 'You & Me', occasion: 'valentines', style: 'minimalist', bg: solid('#F9EEEC'), art: art('geo', ['#D9534F', '#2B2622', '#E8A7A1'], 2), ink: '#5A2A2A', accent: '#D9534F', sticker: { kind: 'heart', color: '#D9534F' }, title: 'you & me', sub: 'always', titleFont: 'Playfair Display', titleSize: 136, titleItalic: true },
+  { id: 'ret-cheers', name: 'Cheers to You', occasion: 'retirement', style: 'luxury', bg: solid('#FFFDF8'), art: art('sunburst', ['#F6EEDB', '#FFFDF8'], 1), border: { kind: 'double', color: GOLD, inset: 44 }, ink: '#6E5626', accent: '#A8843F', eyebrow: 'happy retirement', title: 'Cheers\nto You', titleFont: 'Playfair Display', titleSize: 124 },
 ];
 
 export const TEMPLATE_MAP: Record<string, TemplateSpec> = Object.fromEntries(TEMPLATES.map((t) => [t.id, t]));
@@ -229,12 +253,19 @@ export function reflow(doc: CardDoc, to: Orientation): CardDoc {
   return { orientation: to, front: face(doc.front), inside: face(doc.inside) };
 }
 
-export function newCard(opts: { template?: TemplateSpec; orientation: Orientation; occasion?: OccasionId; signature?: string }): SavedCard {
+export function newCard(opts: { template?: TemplateSpec; orientation: Orientation; occasion?: OccasionId; signature?: string; recipient?: string }): SavedCard {
   const occasion = opts.template?.occasion ?? opts.occasion ?? 'just-because';
   const doc = opts.template ? buildTemplate(opts.template, opts.orientation, opts.signature) : blankDoc(opts.orientation, occasion, opts.signature);
   const now = Date.now();
+  const recipient = opts.recipient?.trim();
+  if (recipient) {
+    // Address the inside of the card to the person it is for.
+    const greeting = doc.inside.elements.find((e) => e.type === 'text' && e.role === 'title');
+    if (greeting && greeting.type === 'text') { greeting.text = `Dear ${recipient},`; if (greeting.font === 'Great Vibes') greeting.size = Math.min(greeting.size, 84); }
+  }
+  const base = opts.template ? opts.template.name : `${occasionLabel(occasion)} card`;
   return {
-    ...doc, id: uid(), name: opts.template ? opts.template.name : `${occasionLabel(occasion)} card`,
+    ...doc, id: uid(), name: recipient ? `${base} for ${recipient}` : base, recipient,
     occasion, templateId: opts.template?.id, status: 'draft', favourite: false, createdAt: now, updatedAt: now,
   };
 }

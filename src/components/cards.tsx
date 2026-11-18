@@ -14,21 +14,21 @@ import { Button, FavouriteButton, IconButton, useToast } from './ui';
 export function useStartCard() {
   const { settings, saveCard, markTemplateUsed } = useStore();
   const toast = useToast();
-  return useCallback(async (opts: { template?: TemplateSpec; orientation?: Orientation; occasion?: OccasionId }) => {
-    const card = newCard({ template: opts.template, orientation: opts.orientation ?? settings.defaultOrientation, occasion: opts.occasion, signature: settings.signature });
+  return useCallback(async (opts: { template?: TemplateSpec; orientation?: Orientation; occasion?: OccasionId; recipient?: string }) => {
+    const card = newCard({ template: opts.template, orientation: opts.orientation ?? settings.defaultOrientation, occasion: opts.occasion, signature: settings.signature, recipient: opts.recipient });
     try { await saveCard(card); } catch (e) { toast((e as Error).message, 'error'); }
     if (opts.template) markTemplateUsed(opts.template.id);
     navigate('edit', {}, card.id);
   }, [settings.defaultOrientation, settings.signature, saveCard, markTemplateUsed, toast]);
 }
 
-export function TemplateCard({ template, compact, orientation }: { template: TemplateSpec; compact?: boolean; orientation?: Orientation }) {
+export function TemplateCard({ template, compact, orientation, recipient }: { template: TemplateSpec; compact?: boolean; orientation?: Orientation; recipient?: string }) {
   const { favTemplates, toggleTemplateFavourite } = useStore();
   const start = useStartCard();
   const doc = templatePreview(template.id, orientation ?? 'portrait');
   const fav = favTemplates.includes(template.id);
   if (!doc) return null;
-  const go = () => start({ template, orientation });
+  const go = () => start({ template, orientation, recipient });
   return (
     <article className="group min-w-0">
       <div className="relative overflow-hidden rounded-xl shadow-card ring-1 ring-black/5 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lift">

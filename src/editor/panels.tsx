@@ -1,7 +1,7 @@
 // Editor side panels: design, text, photos and decorative elements.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  AlignCenter, AlignHorizontalJustifyCenter, AlignLeft, AlignRight, Bold, BringToFront, Copy, ImagePlus, Italic, RectangleHorizontal,
+  AlignCenter, AlignHorizontalJustifyCenter, AlignLeft, AlignRight, Bold, BringToFront, Copy, Crop, ImagePlus, Italic, PenTool, QrCode, RectangleHorizontal,
   RectangleVertical, Replace, SendToBack, Shuffle, Square, Trash2, Type,
 } from 'lucide-react';
 import type { Align, ArtKind, BorderKind, CardDoc, CardElement, FaceKey, ImageEl, Orientation, PhotoFrame, PhotoShape, StickerEl, TextEl } from '../types';
@@ -10,16 +10,20 @@ import { FONTS } from '../data/fonts';
 import { buildTemplate, reflow, TEMPLATES, templatePreview } from '../data/templates';
 import { ART_LABELS, ART_PALETTES } from '../render/art';
 import { EMOJI_STICKERS, drawSticker, STICKER_IDS, STICKERS } from '../render/stickers';
-import { FILTERS, processUpload } from '../render/images';
+import { FILTERS, loadImage, processUpload } from '../render/images';
+import { qrMatrix } from '../render/stickers';
+import { useStore } from '../lib/store';
+import { SignaturePad } from '../components/SignaturePad';
 import { CardCanvas } from '../components/CardCanvas';
 import { Button, Chip, ColorPicker, IconButton, Segmented, Slider, useToast } from '../components/ui';
-import { addEl, centreEl, duplicateEl, makeImage, makeSticker, makeText, moveLayer, patchEl, removeEl, updateFace } from './ops';
+import { addEl, applyPhotoLayout, centreEl, duplicateEl, makeImage, makeSignature, makeSticker, makeText, moveLayer, patchEl, PHOTO_LAYOUTS, removeEl, updateFace } from './ops';
 import type { Apply } from './useHistory';
 
 export interface PanelProps {
   doc: CardDoc; face: FaceKey; apply: Apply<CardDoc>;
   selected: CardElement | undefined; select: (id: string | null) => void;
   occasion: string; signature: string;
+  cropMode: boolean; setCropMode: (on: boolean) => void;
 }
 
 function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -38,6 +42,9 @@ function ElementActions({ doc, face, apply, selected, select }: PanelProps) {
   if (!selected) return null;
   const id = selected.id;
   return (
+    <>
+    <Slider label="Rotation" value={selected.rotation ?? 0} min={-180} max={180} format={(v) => `${Math.round(v)}°`}
+      onChange={(rotation) => apply((d) => patchEl(d, face, id, { rotation: Math.abs(rotation) < 3 ? 0 : rotation }), `rot-${id}`)} />
     <div className="flex items-center gap-0.5 rounded-full border border-ivory-300 bg-white/70 p-0.5">
       <IconButton label="Centre horizontally" onClick={() => apply((d) => centreEl(d, face, id))}><AlignHorizontalJustifyCenter className="h-4 w-4" /></IconButton>
       <IconButton label="Bring forward" onClick={() => apply((d) => moveLayer(d, face, id, 1))}><BringToFront className="h-4 w-4" /></IconButton>
@@ -46,6 +53,7 @@ function ElementActions({ doc, face, apply, selected, select }: PanelProps) {
       <span className="flex-1" />
       <IconButton label="Delete element" className="hover:!bg-rosewood/10 hover:!text-rosewood" onClick={() => { apply((d) => removeEl(d, face, id)); select(null); }}><Trash2 className="h-4 w-4" /></IconButton>
     </div>
+    </>
   );
 }
 
@@ -173,13 +181,30 @@ export function TextPanel(p: PanelProps & { focusSignal: number }) {
   const set = (patch: Partial<TextEl>, key?: string) => el && apply((d) => patchEl(d, face, el.id, patch), key ? `${key}-${el.id}` : undefined);
   const add = (preset: 'heading' | 'body' | 'script') => { const t = makeText(doc, face, preset); apply((d) => addEl(d, face, t)); select(t.id); };
   const texts = doc[face].elements.filter((e): e is TextEl => e.type === 'text');
+  const { settings, updateSettings } = useStore();
+  const toast = useToast();
+  const [pad, setPad] = useState(false);
+  const addSignature = async (src: string) => {
+    try {
+      const img = await loadImage(src);
+      const s = makeSignature(doc, src, img.naturalWidth, img.naturalHeight);
+      apply((d) => addEl(d, face, s)); select(s.id);
+    } catch { toast('Your signature could not be added. Try drawing it again.', 'error'); }
+  };
   return (
     <div className="space-y-5">
+      <SignaturePad open={pad} onClose={() => setPad(false)} onSave={(src) => { updateSettings({ signatureImage: src }); setPad(false); void addSignature(src); toast('Signature saved and added'); }} />
       <Section title="Add text">
         <div className="grid grid-cols-3 gap-2">
           <button type="button" onClick={() => add('heading')} className="rounded-xl border border-ivory-300 bg-white/70 px-2 py-3 font-serif text-lg transition hover:border-gold-500">Heading</button>
           <button type="button" onClick={() => add('body')} className="rounded-xl border border-ivory-300 bg-white/70 px-2 py-3 font-display text-base transition hover:border-gold-500">Body text</button>
           <button type="button" onClick={() => add('script')} className="rounded-xl border border-ivory-300 bg-white/70 px-2 py-3 font-script text-2xl leading-none transition hover:border-gold-500">Script</button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" icon={<PenTool className="h-3.5 w-3.5" />} onClick={() => (settings.signatureImage ? void addSignature(settings.signatureImage) : setPad(true))}>
+            {settings.signatureImage ? 'Add my signature' : 'Draw my signature'}
+          </Button>
+          {settings.signatureImage && <Button size="sm" variant="ghost" onClick={() => setPad(true)}>Redraw</Button>}
         </div>
       </Section>
 
@@ -211,6 +236,16 @@ export function TextPanel(p: PanelProps & { focusSignal: number }) {
           <ColorPicker label="Text colour" value={el.color} onChange={(color) => set({ color }, 'color')} />
           <Slider label="Letter spacing" value={el.spacing} min={0} max={40} onChange={(spacing) => set({ spacing }, 'spacing')} />
           <Slider label="Line height" value={el.lineHeight} min={0.8} max={2.2} step={0.02} format={(v) => v.toFixed(2)} onChange={(lineHeight) => set({ lineHeight }, 'lh')} />
+          <div className="space-y-3 rounded-2xl border border-ivory-300 bg-white/50 p-3">
+            <span className="label">Text effects</span>
+            <Slider label="Curve" value={el.curve ?? 0} min={-100} max={100} format={(v) => (Math.abs(v) < 2 ? 'Straight' : v > 0 ? `Arch ${Math.round(v)}` : `Smile ${Math.round(-v)}`)}
+              onChange={(curve) => set({ curve: Math.abs(curve) < 4 ? 0 : curve }, 'curve')} />
+            <Slider label="Outline" value={el.outline ?? 0} min={0} max={14} step={0.5} format={(v) => (v ? v.toFixed(1) : 'None')} onChange={(outline) => set({ outline }, 'outline')} />
+            {!!el.outline && <ColorPicker label="Outline colour" value={el.outlineColor ?? '#FFFFFF'} onChange={(outlineColor) => set({ outlineColor }, 'outline-color')} />}
+            <label className="flex items-center gap-2.5 text-sm text-ink-soft">
+              <input type="checkbox" className="h-4 w-4 accent-[#A8843F]" checked={!!el.shadow} onChange={(e) => set({ shadow: e.target.checked })} /> Soft drop shadow
+            </label>
+          </div>
           <ElementActions {...p} />
         </Section>
       ) : (
@@ -238,22 +273,33 @@ const SHAPES: { id: PhotoShape; label: string }[] = [{ id: 'rect', label: 'Recta
 const FRAMES: { id: PhotoFrame; label: string }[] = [{ id: 'none', label: 'None' }, { id: 'white', label: 'White mount' }, { id: 'gold', label: 'Gold' }, { id: 'ink', label: 'Ink' }, { id: 'shadow', label: 'Soft shadow' }];
 
 export function PhotoPanel(p: PanelProps) {
-  const { doc, face, apply, selected, select } = p;
+  const { doc, face, apply, selected, select, cropMode, setCropMode } = p;
   const el = selected?.type === 'image' ? selected : undefined;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const addInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<ImageEl>, key?: string) => el && apply((d) => patchEl(d, face, el.id, patch), key ? `${key}-${el.id}` : undefined);
-  const photos = doc[face].elements.filter((e): e is ImageEl => e.type === 'image');
+  const photos = doc[face].elements.filter((e): e is ImageEl => e.type === 'image' && !e.role);
 
-  const onFile = async (file: File | undefined, replace: boolean) => {
-    if (!file) return;
+  const onFile = async (list: FileList | null, replace: boolean) => {
+    const files = list ? [...list].slice(0, 4) : [];
+    if (!files.length) return;
     setBusy(true); setError('');
     try {
-      const img = await processUpload(file);
-      if (replace && el) set({ src: img.src, zoom: 1, ox: 0, oy: 0 });
-      else { const n = makeImage(doc, img.src, img.w, img.h); apply((d) => addEl(d, face, n)); select(n.id); }
+      if (replace && el) {
+        const img = await processUpload(files[0]);
+        set({ src: img.src, zoom: 1, ox: 0, oy: 0 });
+      } else {
+        let lastId = '';
+        for (const [i, file] of files.entries()) {
+          const img = await processUpload(file);
+          const n = makeImage(doc, img.src, img.w, img.h);
+          n.x += i * 40; n.y += i * 40; lastId = n.id;
+          apply((d) => addEl(d, face, n));
+        }
+        if (lastId) select(lastId);
+      }
     } catch (e) {
       setError((e as Error).message || 'That photo could not be added.');
     } finally {
@@ -266,19 +312,23 @@ export function PhotoPanel(p: PanelProps) {
   return (
     <div className="space-y-5">
       <Section title="Add a photo">
-        <input ref={addInput} type="file" accept="image/*" className="sr-only" aria-label="Choose a photo to upload" onChange={(e) => onFile(e.target.files?.[0], false)} />
+        <input ref={addInput} type="file" accept="image/*" multiple className="sr-only" aria-label="Choose photos to upload" onChange={(e) => onFile(e.target.files, false)} />
         <Button variant="primary" busy={busy} className="w-full" icon={<ImagePlus className="h-4 w-4" />} onClick={() => addInput.current?.click()}>Upload from this device</Button>
         {error && <p role="alert" className="rounded-xl bg-rosewood/10 px-3.5 py-2.5 text-sm text-rosewood">{error}</p>}
-        <p className="text-xs leading-relaxed text-ink-mute">JPG, PNG, WebP and GIF are supported. Photos stay on this device — they are never uploaded to a server.</p>
+        <p className="text-xs leading-relaxed text-ink-mute">JPG, PNG, WebP and GIF are supported — choose up to four at once. Photos stay on this device — they are never uploaded to a server.</p>
       </Section>
 
       {el ? (
         <Section title="Edit photo">
-          <input ref={replaceInput} type="file" accept="image/*" className="sr-only" aria-label="Choose a replacement photo" onChange={(e) => onFile(e.target.files?.[0], true)} />
+          <input ref={replaceInput} type="file" accept="image/*" className="sr-only" aria-label="Choose a replacement photo" onChange={(e) => onFile(e.target.files, true)} />
           <div className="flex gap-2">
             <Button size="sm" icon={<Replace className="h-3.5 w-3.5" />} onClick={() => replaceInput.current?.click()}>Replace</Button>
             <Button size="sm" variant="danger" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => { apply((d) => removeEl(d, face, el.id)); select(null); }}>Remove</Button>
           </div>
+          <Button size="sm" variant={cropMode ? 'dark' : 'secondary'} icon={<Crop className="h-3.5 w-3.5" />} onClick={() => setCropMode(!cropMode)} aria-pressed={cropMode}>
+            {cropMode ? 'Done cropping' : 'Crop on the card'}
+          </Button>
+          <p className="text-xs leading-relaxed text-ink-mute">{cropMode ? 'Drag the photo to reposition it; pinch or scroll to zoom.' : 'Or double-tap the photo. Fine-tune with the sliders below.'}</p>
           <Slider label="Crop zoom" value={el.zoom} min={1} max={3} step={0.01} format={(v) => `${Math.round(v * 100)}%`} onChange={(zoom) => set({ zoom }, 'zoom')} />
           <Slider label="Reposition left / right" value={el.ox} min={-1} max={1} step={0.01} format={(v) => (v === 0 ? 'Centre' : v.toFixed(2))} onChange={(ox) => set({ ox }, 'ox')} />
           <Slider label="Reposition up / down" value={el.oy} min={-1} max={1} step={0.01} format={(v) => (v === 0 ? 'Centre' : v.toFixed(2))} onChange={(oy) => set({ oy }, 'oy')} />
@@ -309,6 +359,25 @@ export function PhotoPanel(p: PanelProps) {
           ) : <p className="text-sm text-ink-mute">No photos yet. Upload one, then drag it into place and resize it from its corner.</p>}
         </Section>
       )}
+
+      <Section title="Photo layouts">
+        {PHOTO_LAYOUTS[Math.min(photos.length, 4)] ? (
+          <>
+            <div className="flex flex-wrap gap-2.5">
+              {PHOTO_LAYOUTS[Math.min(photos.length, 4)].map((l) => (
+                <button key={l.id} type="button" title={l.label} aria-label={`Apply the ${l.label} layout`} onClick={() => { apply((d) => applyPhotoLayout(d, face, l)); setCropMode(false); }}
+                  className="rounded-xl border border-ivory-300 bg-white/70 p-2 text-center text-[11px] text-ink-soft transition hover:-translate-y-0.5 hover:border-gold-500">
+                  <span className="relative mb-1 block h-12 w-16">
+                    {l.rects.map(([x, y, w, h], i) => <span key={i} className="absolute rounded-[3px] bg-gold-400" style={{ left: `calc(${x * 100}% + 1px)`, top: `calc(${y * 100}% + 1px)`, width: `calc(${w * 100}% - 2px)`, height: `calc(${h * 100}% - 2px)` }} />)}
+                  </span>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs leading-relaxed text-ink-mute">Arranges the {photos.length > 4 ? 'first four photos' : photos.length === 1 ? 'photo' : `${photos.length} photos`} on this side into a collage. Use “Crop on the card” to adjust each one.</p>
+          </>
+        ) : <p className="text-sm text-ink-mute">Add one to four photos to this side to arrange them as a collage.</p>}
+      </Section>
     </div>
   );
 }
@@ -329,7 +398,9 @@ export function ElementsPanel(p: PanelProps) {
   const { doc, face, apply, selected, select } = p;
   const el = selected?.type === 'sticker' ? selected : undefined;
   const [color, setColor] = useState('#C2A05A');
-  const isVector = el && !el.kind.startsWith('emoji:');
+  const [qr, setQr] = useState('');
+  const [qrError, setQrError] = useState('');
+  const isVector = el && !el.kind.startsWith('emoji:') && !el.kind.startsWith('qr:');
   const add = (kind: string) => { const s = makeSticker(doc, face, kind, color); apply((d) => addEl(d, face, s)); select(s.id); };
   const set = (patch: Partial<StickerEl>, key?: string) => el && apply((d) => patchEl(d, face, el.id, patch), key ? `${key}-${el.id}` : undefined);
   return (
@@ -340,6 +411,22 @@ export function ElementsPanel(p: PanelProps) {
           <ElementActions {...p} />
         </Section>
       )}
+      <Section title="QR code">
+        <form className="flex gap-2" onSubmit={(e) => {
+          e.preventDefault();
+          const v = qr.trim();
+          if (!v) { setQrError('Paste a link first, e.g. a video message or playlist.'); return; }
+          const url = /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : 'https://' + v;
+          if (!qrMatrix(url)) { setQrError('That link is too long for a QR code.'); return; }
+          setQrError(''); const s = makeSticker(doc, face, 'qr:' + url, '#2B2622'); apply((d) => addEl(d, face, s)); select(s.id); setQr('');
+        }}>
+          <input className="field" inputMode="url" value={qr} onChange={(e) => setQr(e.target.value)} placeholder="Link to a video, playlist or page" aria-label="Link for the QR code" />
+          <Button type="submit" variant="dark" icon={<QrCode className="h-4 w-4" />}>Add</Button>
+        </form>
+        {qrError && <p role="alert" className="text-xs text-rosewood">{qrError}</p>}
+        {el?.kind.startsWith('qr:') && <p className="break-all text-xs text-ink-mute">Selected code opens: {el.kind.slice(3)}</p>}
+        <p className="text-xs leading-relaxed text-ink-mute">Anyone who scans the code with their phone camera opens your link. Keep it at least 2 cm wide when printed.</p>
+      </Section>
       <Section title="Decorative shapes">
         <ColorPicker label={isVector ? 'Colour of selected shape' : 'Shape colour'} value={isVector ? el.color : color} onChange={(c) => { setColor(c); if (isVector) set({ color: c }, 'color'); }} />
         <div className="grid grid-cols-6 gap-1.5">

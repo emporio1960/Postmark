@@ -2,7 +2,7 @@
 // work on any static host; filters travel in memory alongside the view.
 import { useSyncExternalStore } from 'react';
 
-export type View = 'home' | 'create' | 'templates' | 'cards' | 'occasions' | 'favourites' | 'preferences' | 'edit';
+export type View = 'home' | 'create' | 'templates' | 'cards' | 'occasions' | 'favourites' | 'preferences' | 'edit' | 'shared';
 export type Params = Record<string, string | undefined>;
 export interface Route { view: View; id?: string; params: Params }
 
@@ -13,6 +13,7 @@ const listeners = new Set<() => void>();
 
 function parse(): Route {
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#\/?/, '');
+  if (h.startsWith('card=')) return { view: 'shared', id: h.slice(5), params: {} };
   if (h.startsWith('edit-')) return { view: 'edit', id: h.slice(5), params: {} };
   const view = (VIEWS as string[]).includes(h) ? (h as View) : 'home';
   return { view, params: store[view] ?? {} };

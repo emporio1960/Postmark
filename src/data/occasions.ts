@@ -1,7 +1,8 @@
 export type OccasionId =
   | 'birthday' | 'anniversary' | 'wedding' | 'engagement' | 'christmas' | 'new-year' | 'valentines'
   | 'mothers-day' | 'fathers-day' | 'easter' | 'thank-you' | 'congratulations' | 'get-well'
-  | 'sympathy' | 'retirement' | 'graduation' | 'baby-shower' | 'just-because';
+  | 'sympathy' | 'retirement' | 'graduation' | 'baby-shower' | 'just-because'
+  | 'australia-day' | 'anzac-day' | 'melbourne-cup' | 'footy-finals';
 
 export interface Occasion { id: OccasionId; label: string; emoji: string; tint: string; popular?: boolean }
 
@@ -24,6 +25,10 @@ export const OCCASIONS: Occasion[] = [
   { id: 'graduation', label: 'Graduation', emoji: '🎓', tint: '#E5E6EF' },
   { id: 'baby-shower', label: 'Baby Shower', emoji: '🧸', tint: '#E4F0F3' },
   { id: 'just-because', label: 'Just Because', emoji: '🌿', tint: '#E9EFE4' },
+  { id: 'australia-day', label: 'Australia Day', emoji: '🇦🇺', tint: '#E3EAF3' },
+  { id: 'anzac-day', label: 'ANZAC Day', emoji: '🌺', tint: '#F6E3E0' },
+  { id: 'melbourne-cup', label: 'Melbourne Cup', emoji: '🏇', tint: '#F4E9D0' },
+  { id: 'footy-finals', label: 'Footy Finals', emoji: '🏉', tint: '#F7E8D6' },
 ];
 
 export function occasionLabel(id: string): string {

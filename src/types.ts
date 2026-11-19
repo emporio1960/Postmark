@@ -114,6 +114,8 @@ export interface OccasionReminder {
   lastNotified?: string; // YYYY-MM-DD of the last reminder shown
 }
 
+export interface CloudConfig { containerId: string; apiToken: string; environment: 'development' | 'production' }
+
 export interface Settings {
   defaultOrientation: Orientation;
   signature: string;
@@ -124,6 +126,8 @@ export interface Settings {
   signatureImage?: string;
   /** optional URL of the user's own AI message backend */
   aiEndpoint?: string;
+  /** iCloud sync details entered on this device (overrides src/config.ts) */
+  cloud?: CloudConfig;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

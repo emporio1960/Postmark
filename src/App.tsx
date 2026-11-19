@@ -1,6 +1,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { BellRing, X } from 'lucide-react';
 import { StoreProvider, useStore } from './lib/store';
+import { SyncProvider } from './lib/sync';
 import { navigate, useRoute } from './lib/router';
 import { describeDays, dueReminders, showNotification, todayISO, type Upcoming } from './lib/dates';
 import { loadCardFonts } from './data/fonts';
@@ -94,7 +95,9 @@ export default function App() {
     <ErrorBoundary>
       <ToastProvider>
         <StoreProvider>
-          <Shell />
+          <SyncProvider>
+            <Shell />
+          </SyncProvider>
         </StoreProvider>
       </ToastProvider>
     </ErrorBoundary>

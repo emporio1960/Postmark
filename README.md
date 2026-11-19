@@ -37,6 +37,7 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`
 | Shareable card links (card travels inside the link) | `src/lib/share.ts`, `src/pages/Shared.tsx` |
 | Video export, envelope designer | `src/render/video.ts`, `src/render/envelope.ts` |
 | Backup / restore, calendar (.ics) export | `src/lib/backup.ts`, `src/lib/ics.ts` |
+| iCloud sync via CloudKit JS (setup in `CLOUDKIT.md`) | `src/lib/cloud.ts`, `src/lib/sync.tsx`, `src/config.ts` |
 | Example AI message backend (keeps the key server-side) | `server/ai-worker.example.js` |
 | Editor (stage, undo/redo, panels) | `src/editor/` |
 | Screens | `src/pages/` |

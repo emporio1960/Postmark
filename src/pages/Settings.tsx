@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Crown, Database, Download, PenTool, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Cloud, Crown, Database, Download, PenTool, RefreshCw, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { makeBackup, readBackup } from '../lib/backup';
 import { saveBlob } from '../render/export';
 import { isValidEndpoint } from '../data/messages';
 import { SignaturePad } from '../components/SignaturePad';
+import { useSync } from '../lib/sync';
+import { timeAgo } from '../lib/utils';
+import type { CloudConfig } from '../types';
 import type { Orientation } from '../types';
 import { ORIENTATION_LABEL } from '../types';
 import { useStore } from '../lib/store';
@@ -30,6 +33,79 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       className={`relative h-7 w-12 rounded-full transition ${checked ? 'bg-gold-600' : 'bg-ivory-400'}`}>
       <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
     </button>
+  );
+}
+
+function CloudSync() {
+  const { settings, updateSettings } = useStore();
+  const sync = useSync();
+  const toast = useToast();
+  const [form, setForm] = useState<CloudConfig>(settings.cloud ?? { containerId: '', apiToken: '', environment: 'development' });
+  const [error, setError] = useState('');
+  const { status, showButtons } = sync;
+  // CloudKit draws its own Apple sign-in / sign-out button into the placeholders below.
+  useEffect(() => { if (status === 'signedOut' || status === 'idle') showButtons(); }, [status, showButtons]);
+
+  const save = () => {
+    const id = form.containerId.trim(), token = form.apiToken.trim();
+    if (!/^iCloud\.[\w.-]+$/.test(id)) { setError('The container ID starts with “iCloud.”, for example iCloud.com.yourname.cards'); return; }
+    if (token.length < 20) { setError('Paste the full API token from the CloudKit Console.'); return; }
+    setError(''); updateSettings({ cloud: { containerId: id, apiToken: token, environment: form.environment } }); toast('iCloud details saved');
+  };
+  const label: Record<typeof status, string> = {
+    unavailable: 'Not available in this embedded preview', unconfigured: 'Not set up', connecting: 'Connecting to iCloud…', signedOut: 'Not signed in',
+    idle: sync.lastSynced ? `Up to date · synced ${timeAgo(sync.lastSynced)}` : 'Signed in', syncing: 'Syncing…', error: 'Sync problem',
+  };
+  const dot = status === 'idle' ? 'bg-emerald-600' : status === 'syncing' || status === 'connecting' ? 'bg-gold-500 animate-pulse' : status === 'error' ? 'bg-rosewood' : 'bg-ivory-400';
+
+  return (
+    <section className="surface mb-6 p-5 sm:p-7" aria-label="iCloud sync">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold-100 text-gold-700"><Cloud className="h-5 w-5" /></span>
+          <div>
+            <h2 className="text-2xl font-semibold">iCloud sync</h2>
+            <p className="flex items-center gap-2 text-xs text-ink-mute" role="status"><span className={`h-2 w-2 rounded-full ${dot}`} />{label[status]}</p>
+          </div>
+        </div>
+        {sync.signedIn && <Button size="sm" variant="dark" busy={status === 'syncing'} onClick={() => sync.syncNow()} icon={<RefreshCw className="h-3.5 w-3.5" />}>Sync now</Button>}
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+        Keep cards, people, occasions, favourites and your signature in step across your devices using your own private iCloud database. Sign in with the same Apple Account on each device.
+      </p>
+      {sync.message && <p role="alert" className="mt-3 rounded-xl bg-rosewood/10 px-3.5 py-2.5 text-sm text-rosewood">{sync.message}</p>}
+
+      {status === 'unavailable' ? (
+        <p className="mt-3 text-sm text-ink-mute">Open the app at its own web address (or from your Home Screen) to use iCloud sync.</p>
+      ) : !sync.config ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-sm leading-relaxed text-ink-soft">One-off setup: create a CloudKit container and an API token in Apple’s CloudKit Console (steps are in <code>CLOUDKIT.md</code> in the project), then paste them here.</p>
+          <label className="block"><span className="label">Container ID</span>
+            <input className="field" value={form.containerId} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="iCloud.com.yourname.greetingcardstudio" onChange={(e) => setForm({ ...form, containerId: e.target.value })} /></label>
+          <label className="block"><span className="label">API token</span>
+            <input className="field" value={form.apiToken} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Paste the token from the CloudKit Console" onChange={(e) => setForm({ ...form, apiToken: e.target.value })} /></label>
+          <div className="flex flex-wrap items-center gap-3">
+            <Segmented label="CloudKit environment" value={form.environment} onChange={(environment) => setForm({ ...form, environment })} options={[{ id: 'development', label: 'Development' }, { id: 'production', label: 'Production' }]} />
+            <Button variant="primary" onClick={save}>Save and connect</Button>
+          </div>
+          {error && <p role="alert" className="text-xs text-rosewood">{error}</p>}
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          <div className="flex min-h-[44px] flex-wrap items-center gap-3">
+            <div id="apple-sign-in-button" />
+            <div id="apple-sign-out-button" />
+          </div>
+          <p className="text-xs leading-relaxed text-ink-mute">
+            Container <code>{sync.config.containerId}</code> · {sync.config.environment}. Apple asks you to sign in again from time to time (tick “Keep me signed in” for two weeks).
+            Cards upload when you leave the editor; the newest edit of a card wins.
+          </p>
+          {!sync.fromBuild && (
+            <Button size="sm" variant="ghost" onClick={() => { updateSettings({ cloud: undefined }); setForm({ containerId: '', apiToken: '', environment: 'development' }); toast('iCloud details removed from this device'); }}>Remove iCloud details from this device</Button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -116,6 +192,8 @@ export function Settings() {
         </div>
       </section>
 
+      <CloudSync />
+
       <section className="surface mb-6 p-5 sm:p-7">
         <h2 className="text-2xl font-semibold">Backup &amp; restore</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">Cards live only in this browser. Save a backup file to move everything to another device, or to keep a safe copy. Restoring adds to what is already here; it never deletes.</p>
@@ -132,7 +210,7 @@ export function Settings() {
           <h2 className="text-2xl font-semibold">Your data stays with you</h2>
         </div>
         <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-ink-soft">
-          <li>Cards, photographs, favourites, occasions and settings are stored only in this browser on this device.</li>
+          <li>Cards, photographs, favourites, occasions and settings are stored in this browser on this device — and, only if you turn on iCloud sync, in your own private iCloud database.</li>
           <li>Photos you add are never uploaded to a server, and messages are written on your device unless you add your own AI endpoint above.</li>
           <li>There are no accounts and no analytics. Card links carry the card inside the link itself, so no server stores it.</li>
           <li>Clearing your browser’s site data, or using private browsing, will remove your cards — export anything you want to keep.</li>
@@ -169,7 +247,7 @@ export function Settings() {
 
       <SignaturePad open={pad} onClose={() => setPad(false)} onSave={(src) => { updateSettings({ signatureImage: src }); setPad(false); toast('Signature saved'); }} />
       <ConfirmDialog open={confirm} title="Delete all data?" confirmLabel="Delete everything" onClose={() => setConfirm(false)}
-        message="This permanently removes all cards, photographs, occasions, favourites and settings from this device. It cannot be undone."
+        message="This permanently removes all cards, photographs, occasions, favourites and settings from this device. It cannot be undone. Anything already synced to iCloud stays there and returns if you sign in again."
         onConfirm={() => { clearAll().then(() => toast('All local data deleted')).catch(() => toast('Some data could not be deleted. Try clearing site data in your browser.', 'error')); }} />
     </div>
   );

@@ -9,6 +9,7 @@ import { PreviewModal } from '../components/PreviewModal';
 import { Button, Chip, ConfirmDialog, EmptyState, PageHeader, Spinner, useToast } from '../components/ui';
 import { TEMPLATE_MAP } from '../data/templates';
 import { TemplateCard } from '../components/cards';
+import { useSync } from '../lib/sync';
 
 type Filter = 'all' | 'draft' | 'completed' | 'favourite';
 type Sort = 'edited' | 'created' | 'name';
@@ -21,6 +22,7 @@ export function MyCards() {
   const [q, setQ] = useState('');
   const [preview, setPreview] = useState<SavedCard | null>(null);
   const [toDelete, setToDelete] = useState<SavedCard | null>(null);
+  const sync = useSync();
 
   const counts = useMemo(() => ({
     all: cards.length, draft: cards.filter((c) => c.status === 'draft').length,
@@ -42,6 +44,12 @@ export function MyCards() {
       <PageHeader eyebrow="My Cards" title="Your card library" intro="Drafts save automatically as you work. Everything here is stored on this device."
         action={<Button variant="primary" onClick={() => navigate('create')} icon={<Plus className="h-4 w-4" />}>New card</Button>} />
 
+      {sync.signedIn && (
+        <p className="-mt-3 mb-5 flex items-center gap-2 text-xs text-ink-mute" role="status">
+          <span className={`h-2 w-2 rounded-full ${sync.status === 'syncing' ? 'animate-pulse bg-gold-500' : sync.status === 'error' ? 'bg-rosewood' : 'bg-emerald-600'}`} />
+          {sync.status === 'syncing' ? 'Syncing with iCloud…' : sync.status === 'error' ? `iCloud sync problem: ${sync.message}` : 'In step with iCloud'}
+        </p>
+      )}
       {!persistent && (
         <p role="alert" className="mb-5 rounded-2xl border border-rosewood/30 bg-rosewood/5 px-4 py-3 text-sm text-rosewood">
           This browser is blocking local storage, so cards will only be kept until you close this tab. Download anything you want to keep.

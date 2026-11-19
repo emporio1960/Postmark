@@ -52,3 +52,17 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`
 - **Notifications** only fire while the app is open; background reminders would need a server and push subscription.
 - **Text the message** (phones only) opens the messaging app with the card's words prefilled; to send the card image by SMS/MMS use Share.
 - **Share / print / PDF download** depend on the browser. Inside an embedded preview frame they are hidden or replaced with a save-image fallback.
+
+## Love, From card viewer
+
+`public/c/index.html` is the page recipients see when the Love, From iOS app sends a card link.
+It reads the published card from the app's public iCloud database and shows the opening
+animation, both sides of the card, the effect and the voice note. `public/404.html` forwards
+`…/c/<id>` and `…/r/<id>` links to it.
+
+- In Love, From → Settings → Card viewer, enter `https://emporio1960.github.io/Postmark`.
+- Paste a CloudKit **API token** for `iCloud.Vibe-Central.Love--From` into `CONFIG.apiToken`
+  at the top of the script in `public/c/index.html` (CloudKit Console → Tokens & Keys).
+  The token is read-only and safe to publish.
+- Try it without a real card: `…/Postmark/c/?demo=1` (add `&opening=scratch_reveal`,
+  `confetti_pop` or `classic`, and `&effect=fireworks`, `sparkles` or `moving_flowers`).

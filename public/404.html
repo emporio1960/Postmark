@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Love, From</title>
+<script>
+// Card links look like …/c/<id> (view) or …/r/<id> (reply). GitHub Pages has no page at those
+// addresses, so it serves this file; send the visitor on to the viewer.
+(function () {
+  var m = location.pathname.match(/^(.*\/)(c|r)\/([A-Za-z0-9_-]+)\/?$/);
+  if (m) location.replace(m[1] + 'c/?id=' + m[3] + (m[2] === 'r' ? '&reply=1' : ''));
+  else document.addEventListener('DOMContentLoaded', function () { document.body.hidden = false; });
+})();
+</script>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #FBF8F2; color: #2B2622; font: 17px/1.5 Georgia, serif; text-align: center; padding: 24px; }
+  a { color: #86682F; }
+</style>
+</head>
+<body hidden>
+  <main>
+    <h1 style="font-weight:normal">Page not found</h1>
+    <p>This address doesn't lead anywhere. <a href="./">Open Greeting Card Studio</a></p>
+  </main>
+</body>
+</html>

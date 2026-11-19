@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A card for you · Love, From</title>
+<meta name="description" content="Someone sent you a card. Tap to open it.">
+<meta property="og:title" content="A card for you">
+<meta property="og:description" content="Someone sent you a card. Tap to open it.">
+<meta property="og:image" content="../icon-512.png">
+<meta name="theme-color" content="#FBF8F2">
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<style>
+  :root { --ivory: #FBF8F2; --paper: #FFFDF8; --ink: #2B2622; --soft: #6F655A; --gold: #C2A05A; --gold-deep: #86682F; --line: #E9E0CF; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; min-height: 100dvh; background: radial-gradient(120% 80% at 50% 0%, #FFFDF8 0%, var(--ivory) 55%, #F4EEE2 100%); color: var(--ink);
+         font: 17px/1.5 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; display: flex; flex-direction: column; align-items: center;
+         padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); overflow-x: hidden; }
+  main { width: 100%; max-width: 480px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+  h1 { font-size: 26px; font-weight: normal; margin: 0; line-height: 1.25; }
+  p { margin: 0; color: var(--soft); }
+  .eyebrow { font: 600 12px/1 -apple-system, "Segoe UI", sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-deep); }
+  button, .btn { font: 600 16px/1 -apple-system, "Segoe UI", Roboto, sans-serif; border-radius: 999px; border: 1px solid var(--gold); background: var(--paper); color: var(--ink);
+                 min-height: 48px; padding: 0 22px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+  button.primary, .btn.primary { background: linear-gradient(180deg, #D0B474, #B8944C); border-color: #A8843F; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.18); }
+  button:focus-visible, .btn:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+  [hidden] { display: none !important; }
+  footer { margin-top: 28px; font: 13px/1.4 -apple-system, "Segoe UI", sans-serif; color: #9A8F82; text-align: center; }
+  footer a { color: var(--gold-deep); }
+
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Envelope */
+  .envelope { position: relative; width: min(84vw, 360px); aspect-ratio: 7 / 5; border: 0; padding: 0; background: none; border-radius: 10px; min-height: 0; filter: drop-shadow(0 18px 26px rgba(60, 45, 20, .22)); }
+  .envelope .body { position: absolute; inset: 0; border-radius: 10px; background: linear-gradient(180deg, #F6EEDB, #EBDDB9); border: 1px solid #DEC892; overflow: hidden; }
+  .envelope .body::before, .envelope .body::after { content: ""; position: absolute; bottom: 0; width: 72%; height: 100%; background: linear-gradient(180deg, #F2E7CC, #E6D5AC); }
+  .envelope .body::before { left: 0; clip-path: polygon(0 0, 0 100%, 100% 100%); }
+  .envelope .body::after { right: 0; clip-path: polygon(100% 0, 0 100%, 100% 100%); }
+  .envelope .flap { position: absolute; left: 0; right: 0; top: 0; height: 62%; background: linear-gradient(180deg, #EBDDB9, #DEC892); clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: 50% 0; transition: transform .7s cubic-bezier(.5, 0, .2, 1); z-index: 2; border-radius: 10px 10px 0 0; }
+  .envelope .seal { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #D76A6A, #A63A3A); z-index: 3; display: grid; place-items: center; color: #fff; font-size: 24px; box-shadow: 0 3px 8px rgba(0,0,0,.25); transition: transform .4s, opacity .4s; }
+  .envelope.open .flap { transform: rotateX(180deg); }
+  .envelope.open .seal { transform: scale(.4); opacity: 0; }
+  .envelope.open { animation: drop .7s .55s forwards; }
+  @keyframes drop { to { transform: translateY(60px) scale(.9); opacity: 0; } }
+
+  /* Card */
+  .stage { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .card-wrap { width: 100%; display: grid; place-items: center; perspective: 1400px; }
+  .card { position: relative; width: min(100%, 400px); transform-style: preserve-3d; transition: transform .9s cubic-bezier(.4, 0, .2, 1); border: 0; padding: 0; background: none; border-radius: 12px; min-height: 0; display: block; }
+  .card.flipped { transform: rotateY(180deg); }
+  .card .face { display: block; width: 100%; height: auto; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 22px 44px rgba(60, 45, 20, .24), 0 2px 6px rgba(60, 45, 20, .12); background: var(--paper); }
+  .card .face.back { position: absolute; inset: 0; height: 100%; object-fit: contain; transform: rotateY(180deg); }
+  .card.enter { animation: rise .8s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes rise { from { transform: translateY(40px) scale(.92); opacity: 0; } }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+  /* Scratch */
+  .scratch { position: relative; width: min(100%, 400px); border-radius: 12px; overflow: hidden; box-shadow: 0 22px 44px rgba(60, 45, 20, .24); touch-action: none; }
+  .scratch img { display: block; width: 100%; height: auto; }
+  .scratch canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+
+  /* Voice note */
+  .voice { width: 100%; max-width: 400px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; }
+  .voice button { width: 48px; min-width: 48px; padding: 0; font-size: 18px; }
+  .voice .meta { flex: 1; min-width: 0; font: 14px/1.3 -apple-system, "Segoe UI", sans-serif; color: var(--soft); }
+  .voice .meta b { display: block; color: var(--ink); font-size: 15px; }
+  .voice .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .voice .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .envelope .flap { transition: none; }
+    .card.enter, .envelope.open, .spinner { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<main id="main" aria-live="polite">
+  <div class="spinner" role="status" aria-label="Opening your card"></div>
+</main>
+<footer>Made with <a id="home" href="../">Love, From</a></footer>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Settings. The API token is a public, read-only CloudKit token (CloudKit
+// Console → Tokens & Keys → API token). It is safe to publish: it can only
+// read cards that someone chose to share by link.
+// ---------------------------------------------------------------------------
+var CONFIG = {
+  container: 'iCloud.Vibe-Central.Love--From',
+  apiToken: '',
+  // Cards sent from the App Store / TestFlight app live in "production";
+  // cards sent from a build run in Xcode live in "development".
+  environments: ['production', 'development'],
+  apiBase: 'https://api.apple-cloudkit.com'
+};
+
+var params = new URLSearchParams(location.search);
+var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var main = document.getElementById('main');
+
+function el(tag, attrs, children) {
+  var node = document.createElement(tag);
+  for (var k in attrs || {}) {
+    if (k === 'text') node.textContent = attrs[k];
+    else if (k.slice(0, 2) === 'on') node.addEventListener(k.slice(2), attrs[k]);
+    else if (attrs[k] !== false && attrs[k] != null) node.setAttribute(k, attrs[k]);
+  }
+  (children || []).forEach(function (c) { if (c) node.appendChild(c); });
+  return node;
+}
+function show() { main.replaceChildren.apply(main, arguments); }
+function firstName(name) { return (name || '').trim().split(/\s+/)[0] || ''; }
+
+// ---------------------------------------------------------------------------
+// Loading a published card
+// ---------------------------------------------------------------------------
+function field(record, name) { var f = record.fields && record.fields[name]; return f ? f.value : undefined; }
+function assetURL(record, name, filename) {
+  var v = field(record, name);
+  return v && v.downloadURL ? v.downloadURL.replace('${f}', encodeURIComponent(filename)) : '';
+}
+
+function lookup(id, env) {
+  var url = CONFIG.apiBase + '/database/1/' + CONFIG.container + '/' + env + '/public/records/lookup?ckAPIToken=' + encodeURIComponent(CONFIG.apiToken);
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ records: [{ recordName: id }] }) })
+    .then(function (res) { return res.json().catch(function () { return {}; }).then(function (json) { return { ok: res.ok, json: json }; }); })
+    .then(function (r) {
+      var record = r.json.records && r.json.records[0];
+      if (record && record.fields && !record.serverErrorCode) return record;
+      var code = (record && record.serverErrorCode) || r.json.serverErrorCode || (r.ok ? 'NOT_FOUND' : 'ERROR');
+      throw new Error(code);
+    });
+}
+
+function loadCard(id) {
+  if (!CONFIG.apiToken) return Promise.reject(new Error('NOT_CONFIGURED'));
+  var i = 0, missing = false;
+  function next() {
+    // Not in any environment → "not found"; otherwise a setup or network problem.
+    if (i >= CONFIG.environments.length) return Promise.reject(new Error(missing ? 'NOT_FOUND' : 'ERROR'));
+    return lookup(id, CONFIG.environments[i++]).catch(function (e) {
+      if (e.message === 'NOT_FOUND') missing = true;
+      return next();
+    });
+  }
+  return next().then(function (record) {
+    return {
+      id: id,
+      sender: field(record, 'senderName') || '',
+      recipient: field(record, 'recipientName') || '',
+      opening: field(record, 'openingExperience') || 'classic',
+      effect: field(record, 'animationEffect') || 'none',
+      front: assetURL(record, 'renderedFront', 'front.png'),
+      inside: assetURL(record, 'renderedInside', 'inside.png'),
+      voice: assetURL(record, 'voiceNote', 'voice-note.m4a'),
+      voiceSeconds: Number(field(record, 'voiceNoteDuration')) || 0
+    };
+  });
+}
+
+// A sample card drawn in the browser, for checking the viewer without a real card: ?demo=1
+function demoCard() {
+  function face(title, sub, bg, ink) {
+    var c = document.createElement('canvas'); c.width = 750; c.height = 1050;
+    var x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, 750, 1050);
+    x.strokeStyle = '#C2A05A'; x.lineWidth = 3; x.strokeRect(34, 34, 682, 982); x.lineWidth = 1; x.strokeRect(46, 46, 658, 958);
+    x.fillStyle = ink; x.textAlign = 'center';
+    x.font = 'italic 76px Georgia, serif';
+    title.split('\n').forEach(function (line, n) { x.fillText(line, 375, 440 + n * 96); });
+    x.font = '30px Georgia, serif'; x.fillStyle = '#86682F';
+    sub.split('\n').forEach(function (line, n) { x.fillText(line, 375, 700 + n * 46); });
+    return c.toDataURL('image/png');
+  }
+  return Promise.resolve({
+    id: 'demo', sender: 'Anthony', recipient: 'Sam',
+    opening: params.get('opening') || 'envelope_tear', effect: params.get('effect') || 'confetti',
+    front: face('Happy\nBirthday', 'with love', '#FBF7EF', '#2B2622'),
+    inside: face('Dear Sam,', 'Wishing you a wonderful day\nand a brilliant year ahead.\n\nLove, Anthony', '#FFFDF8', '#2B2622'),
+    voice: '', voiceSeconds: 0
+  });
+}
+
+function preload(src) {
+  return new Promise(function (resolve, reject) {
+    if (!src) return reject(new Error('NO_IMAGE'));
+    var img = new Image();
+    img.onload = function () { resolve(img); };
+    img.onerror = function () { reject(new Error('NO_IMAGE')); };
+    img.src = src;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Effects (confetti, fireworks, sparkles, flowers) on a full-screen canvas
+// ---------------------------------------------------------------------------
+var fx = (function () {
+  var canvas = document.getElementById('fx'), ctx = canvas.getContext('2d');
+  var parts = [], raf = 0, until = 0, spawn = null, last = 0;
+  var COLORS = ['#C2A05A', '#F43F5E', '#F472B6', '#A855F7', '#0284C7', '#34D399', '#FBBF24'];
+  function size() { var d = Math.min(2, window.devicePixelRatio || 1); canvas.width = innerWidth * d; canvas.height = innerHeight * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function pick() { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
+
+  function burst(x, y, n, speed, kind) {
+    for (var i = 0; i < n; i++) {
+      var a = rnd(0, Math.PI * 2), v = rnd(speed * 0.35, speed);
+      parts.push({ kind: kind, x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (kind === 'confetti' ? speed * 0.5 : 0),
+                   g: kind === 'confetti' ? 620 : 120, life: rnd(1.1, kind === 'confetti' ? 3.2 : 1.7), age: 0, size: rnd(5, 10), rot: rnd(0, 6), vr: rnd(-8, 8), color: pick() });
+    }
+  }
+  var spawners = {
+    confetti: function (t) { if (Math.random() < 0.5) burst(rnd(0, innerWidth), -10, 3, 160, 'confetti'); },
+    fireworks: function (t) { if (Math.random() < 0.045) burst(rnd(innerWidth * 0.15, innerWidth * 0.85), rnd(innerHeight * 0.12, innerHeight * 0.5), 46, 300, 'spark'); },
+    sparkles: function (t) { if (Math.random() < 0.35) parts.push({ kind: 'twinkle', x: rnd(0, innerWidth), y: rnd(0, innerHeight), vx: 0, vy: -8, g: 0, life: rnd(0.8, 1.6), age: 0, size: rnd(6, 14), rot: 0, vr: 0, color: Math.random() < 0.7 ? '#DEC892' : '#FFFFFF' }); },
+    moving_flowers: function (t) { if (Math.random() < 0.12) parts.push({ kind: 'flower', x: rnd(0, innerWidth), y: -20, vx: rnd(-25, 25), vy: rnd(45, 95), g: 0, life: 9, age: 0, size: rnd(10, 18), rot: rnd(0, 6), vr: rnd(-1.2, 1.2), color: ['#F472B6', '#F9A8D4', '#FBBF24', '#FFFFFF', '#C4B5FD'][Math.floor(rnd(0, 5))] }); }
+  };
+
+  function draw(p) {
+    var fade = Math.max(0, 1 - p.age / p.life);
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = p.kind === 'flower' ? Math.min(1, fade * 4) : fade; ctx.fillStyle = p.color;
+    if (p.kind === 'confetti') ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+    else if (p.kind === 'spark') { ctx.beginPath(); ctx.arc(0, 0, p.size / 3.2, 0, Math.PI * 2); ctx.fill(); }
+    else if (p.kind === 'twinkle') {
+      var s = p.size * Math.sin(Math.PI * (p.age / p.life));
+      ctx.beginPath();
+      for (var i = 0; i < 8; i++) { var r = i % 2 ? s * 0.22 : s; var a = i * Math.PI / 4; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      ctx.closePath(); ctx.fill();
+    } else {
+      for (var k = 0; k < 5; k++) { ctx.rotate(Math.PI * 2 / 5); ctx.beginPath(); ctx.ellipse(0, -p.size * 0.5, p.size * 0.28, p.size * 0.5, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#F59E0B'; ctx.beginPath(); ctx.arc(0, 0, p.size * 0.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (spawn && now < until) spawn(now);
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts = parts.filter(function (p) {
+      p.age += dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      if (p.kind === 'flower') p.x += Math.sin(p.age * 1.6 + p.size) * 0.6;
+      if (p.age >= p.life || p.y > innerHeight + 40) return false;
+      draw(p); return true;
+    });
+    if (parts.length || now < until) raf = requestAnimationFrame(frame); else { raf = 0; ctx.clearRect(0, 0, innerWidth, innerHeight); }
+  }
+  function run(seconds) { until = performance.now() + seconds * 1000; if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+
+  addEventListener('resize', size); size();
+  return {
+    /** Plays one of the card's effects for a while. */
+    play: function (name, seconds) { if (reduceMotion || !spawners[name]) return; spawn = spawners[name]; run(seconds || 9); },
+    /** A single burst from a point (the confetti popper). */
+    pop: function (x, y) { if (reduceMotion) return; burst(x, y, 150, 620, 'confetti'); run(0.1); }
+  };
+})();
+
+// ---------------------------------------------------------------------------
+// Screens
+// ---------------------------------------------------------------------------
+function heading(card) {
+  var to = firstName(card.recipient), from = firstName(card.sender);
+  return el('div', {}, [
+    el('p', { class: 'eyebrow', text: from ? 'From ' + from : 'A card for you' }),
+    el('h1', { text: to ? 'A card for you, ' + to : 'You have a card' })
+  ]);
+}
+
+function openEnvelope(card) {
+  var env = el('button', { class: 'envelope', type: 'button', 'aria-label': 'Open the envelope' }, [
+    el('span', { class: 'body' }), el('span', { class: 'flap' }), el('span', { class: 'seal', text: '♥', 'aria-hidden': 'true' })
+  ]);
+  env.addEventListener('click', function () {
+    if (env.classList.contains('open')) return;
+    env.classList.add('open');
+    setTimeout(function () { showCard(card); }, reduceMotion ? 0 : 1150);
+  });
+  show(heading(card), env, el('p', { text: 'Tap the envelope to open it' }));
+}
+
+function openPopper(card) {
+  var btn = el('button', { class: 'primary', type: 'button', text: '🎉  Tap to pop' });
+  btn.addEventListener('click', function () {
+    var r = btn.getBoundingClientRect();
+    fx.pop(r.left + r.width / 2, r.top);
+    setTimeout(function () { showCard(card); }, reduceMotion ? 0 : 450);
+  });
+  show(heading(card), btn);
+}
+
+function openScratch(card, frontImage) {
+  var canvas = el('canvas', { 'aria-hidden': 'true' });
+  var box = el('div', { class: 'scratch' }, [el('img', { src: card.front, alt: '' }), canvas]);
+  var skip = el('button', { type: 'button', text: 'Reveal the card' });
+  skip.addEventListener('click', function () { showCard(card); });
+  show(heading(card), box, el('p', { text: 'Scratch with your finger to reveal your card' }), skip);
+
+  var w = 400, h = Math.round(400 * frontImage.naturalHeight / frontImage.naturalWidth);
+  canvas.width = w; canvas.height = h;
+  var ctx = canvas.getContext('2d');
+  var g = ctx.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, '#DEC892'); g.addColorStop(0.5, '#F6EEDB'); g.addColorStop(1, '#C2A05A');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(134, 104, 47, .9)'; ctx.font = '600 22px -apple-system, Segoe UI, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Scratch here', w / 2, h / 2);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = '#000';
+  var down = false, done = false, moves = 0;
+  function at(e) { var r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * w / r.width, y: (e.clientY - r.top) * h / r.height }; }
+  function scratch(e) {
+    var p = at(e);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 30, 0, Math.PI * 2); ctx.fill();
+    if (++moves % 12 === 0 && !done) {
+      var data = ctx.getImageData(0, 0, w, h).data, clear = 0;
+      for (var i = 3; i < data.length; i += 64) if (data[i] < 40) clear++;
+      if (clear / (data.length / 64) > 0.45) { done = true; showCard(card); }
+    }
+  }
+  canvas.addEventListener('pointerdown', function (e) { down = true; canvas.setPointerCapture(e.pointerId); scratch(e); });
+  canvas.addEventListener('pointermove', function (e) { if (down) scratch(e); });
+  canvas.addEventListener('pointerup', function () { down = false; });
+}
+
+function voicePlayer(card) {
+  var audio = new Audio();
+  audio.preload = 'none';
+  audio.src = card.voice;
+  var play = el('button', { class: 'primary', type: 'button', text: '▶', 'aria-label': 'Play voice note' });
+  var fill = el('i');
+  var status = el('span', { text: card.voiceSeconds ? Math.round(card.voiceSeconds) + ' seconds' : 'Tap to listen' });
+  function label(playing) { play.textContent = playing ? '❚❚' : '▶'; play.setAttribute('aria-label', playing ? 'Pause voice note' : 'Play voice note'); }
+  play.addEventListener('click', function () {
+    if (audio.paused) audio.play().catch(function () { status.textContent = 'This voice note could not be played here.'; }); else audio.pause();
+  });
+  audio.addEventListener('play', function () { label(true); });
+  audio.addEventListener('pause', function () { label(false); });
+  audio.addEventListener('ended', function () { label(false); fill.style.width = '0'; });
+  audio.addEventListener('timeupdate', function () {
+    var total = audio.duration && isFinite(audio.duration) ? audio.duration : card.voiceSeconds;
+    if (total) fill.style.width = Math.min(100, audio.currentTime / total * 100) + '%';
+  });
+  audio.addEventListener('error', function () { status.textContent = 'This voice note could not be played here.'; });
+  var from = firstName(card.sender);
+  return el('div', { class: 'voice' }, [play, el('div', { class: 'meta' }, [
+    el('b', { text: from ? 'A voice note from ' + from : 'A voice note for you' }), status, el('div', { class: 'bar' }, [fill])
+  ])]);
+}
+
+function showCard(card) {
+  var from = firstName(card.sender);
+  var front = el('img', { class: 'face', src: card.front, alt: 'Front of the card' });
+  var inside = card.inside ? el('img', { class: 'face back', src: card.inside, alt: 'Inside of the card' }) : null;
+  var cardEl = el('button', { class: 'card enter', type: 'button', 'aria-label': inside ? 'Card. Tap to open it.' : 'Card' }, [front, inside]);
+  var flip = inside ? el('button', { class: 'primary', type: 'button', text: 'Open the card' }) : null;
+  function toggle() {
+    if (!inside) return;
+    var open = cardEl.classList.toggle('flipped');
+    cardEl.classList.remove('enter');
+    flip.textContent = open ? 'See the front' : 'Open the card';
+    cardEl.setAttribute('aria-label', open ? 'Inside of the card. Tap to see the front.' : 'Card. Tap to open it.');
+    if (open) fx.play(card.effect, 6);
+  }
+  cardEl.addEventListener('click', toggle);
+  if (flip) flip.addEventListener('click', toggle);
+
+  var thanksText = 'Thank you so much for the card' + (from ? ', ' + from : '') + '! It made my day. 💌';
+  var thanks = el('button', { type: 'button', text: from ? 'Say thanks to ' + from : 'Say thanks' });
+  thanks.addEventListener('click', function () {
+    if (navigator.share) navigator.share({ text: thanksText }).catch(function () {});
+    else location.href = 'sms:?&body=' + encodeURIComponent(thanksText);
+  });
+  var back = el('a', { class: 'btn', href: '../#create', text: 'Send a card back' });
+
+  show(
+    el('div', {}, [el('p', { class: 'eyebrow', text: from ? 'From ' + from : 'Your card' })]),
+    el('div', { class: 'stage' }, [
+      el('div', { class: 'card-wrap' }, [cardEl]),
+      el('div', { class: 'row' }, [flip]),
+      card.voice ? voicePlayer(card) : null,
+      el('div', { class: 'row' }, [thanks, back])
+    ])
+  );
+  fx.play(card.effect, 9);
+  if (params.get('reply')) thanks.focus({ preventScroll: true });
+}
+
+function showProblem(title, detail) {
+  show(el('h1', { text: title }), el('p', { text: detail }));
+}
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+(function start() {
+  var id = (params.get('id') || '').trim();
+  var loader = params.get('demo') ? demoCard() : (/^[A-Za-z0-9_-]{4,64}$/.test(id) ? loadCard(id) : Promise.reject(new Error('NO_ID')));
+  loader.then(function (card) {
+    return preload(card.front).then(function (frontImage) {
+      var from = firstName(card.sender);
+      document.title = (from ? 'A card from ' + from : 'A card for you') + ' · Love, From';
+      if (card.inside) preload(card.inside).catch(function () {});
+      if (card.opening === 'envelope_tear') openEnvelope(card);
+      else if (card.opening === 'confetti_pop') openPopper(card);
+      else if (card.opening === 'scratch_reveal') openScratch(card, frontImage);
+      else showCard(card);
+    });
+  }).catch(function (e) {
+    var code = e && e.message;
+    if (code === 'NO_ID') showProblem('No card here', 'This link is missing its card. Ask the sender to share it again.');
+    else if (code === 'NOT_FOUND') showProblem('This card is no longer available', 'The sender may have removed it. Ask them to send it again.');
+    else if (code === 'NOT_CONFIGURED') showProblem('Almost ready', 'The card viewer has not been connected to iCloud yet, so cards cannot be shown.');
+    else showProblem('The card could not be opened', 'Check your connection and try again. If it keeps happening, ask the sender to share it again.');
+  });
+})();
+</script>
+</body>
+</html>

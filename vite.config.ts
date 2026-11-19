@@ -28,6 +28,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // The Love, From card viewer (c/) is a separate page: never cache it as the app shell.
+  if (/\\/(c|r)\\//.test(new URL(req.url).pathname)) return;
   if (req.mode === 'navigate') {
     // Fresh page when online, cached shell when offline.
     e.respondWith(fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./', copy)); return res; }).catch(() => caches.match('./')));
